@@ -160,17 +160,7 @@ create_randomstring <- function(length = 8L) {
   if(length > 100) stop('Random string length is over 100, use a smaller length.')
   if(!is.integer(length)) length <- as.integer(length)
 
-  # Determine random lengths
-  if(length %% 2) {
-    length_1 <- (length-1)/2
-    length_2 <- length - length_1
-  } else {
-    length_1 <- length/2
-    length_2 <- length_1
-  }
+  rnd_combo <- sample(c(LETTERS, letters, 0:9), replace = TRUE, size = length)
 
-  rnd_num <- as.character(sample(c(0:9), length_1, replace = TRUE))
-  rnd_char <- sample(c(LETTERS, letters), replace = TRUE, size = length_2)
-
-  paste0(sample(c(rnd_char, rnd_num), size = length, replace = FALSE), collapse = '')
+  paste0(rnd_combo, collapse = '')
 }
