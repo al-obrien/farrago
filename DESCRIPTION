@@ -1,0 +1,54 @@
+Package: farrago
+Type: Package
+Title: A random collection of helpful code baubles
+Version: 0.1.0
+Authors@R: c(
+    person('Allen', 'OBrien', email= 'allen.g.obrien@gmail.com', role = c('aut', 'cre')),
+    person("Tommy", role = c("cph", "ctb"), comment = "Copyright holder and author of original contribution for `round_up_nice` function."),
+    person("Zachary", "Mayer", role = c("cph", "ctb"), comment = "Copyright holder and author of original basis for `maxN` function."),
+    person("Gregor", "Thomas", role = c("cph", "ctb"), comment = "Copyright holder and author of original basis for `calculate_age` function." ),
+    person("Tom", role = c("cph", "ctb"), comment = "Copyright holder and author of original basis for `repath` function."),
+    person("Jeromy", "Anglim", role = c("cph", "ctb"), comment = "Copyright holder and author of original basis for `load_excel_sheets` function."),
+    person("Arun", "Kirshna",  role = c("cph", "ctb"), comment = "Copyright holder and author of original basis for `convert_2wide` function."),
+    person("Steven", "Lockton",  role = c("cph", "ctb"), comment = "Copyright holder and author of original basis for `grid_arrange_shared_legend` function."),
+    person("Baptiste", "Auguié",  role = c("ctb"), comment = "Contributor and adaptation on original `grid_arrange_shared_legend` function."),
+    person("Michael", "Yan", role = c("cph", "ctb"), comment = "Copyright holder and author of original basis for `convert_table2png` function."),
+    person("Bob", "Rudis", role = c("cph", "ctb"), comment = "Copyright holder and author of original `geom_xspline` function from {ggalt}, the implemenation of a bulls-eye chart, and `create_circle`."),
+    person("David", "Robinson", role = c("cph", "ctb"), comment = "Copyright holder and author of original `reorder_within` function from {drlib}."),
+    person("Richie", "Cotton", role = c("cph", "ctb"), comment = "Copyright holder and author of original `convert_num2percent` function.")
+    )
+Maintainer: <allen.g.obrien@gmail.com>
+Description: A mixture of code accumulated over time that have been of some, if not limited, practical use. Developed to assist in 
+    epidemiological work but has broader data science applications.
+License: GPL (>= 3)
+Encoding: UTF-8
+LazyData: true
+Imports:
+    data.table (>= 1.12.8),
+    dplyr (>= 0.8),
+    forcats,
+    grid,
+    lubridate,
+    magrittr (>= 1.5),
+    purrr,
+    Rcpp,
+    readr,
+    rlang,
+    stringr,
+    tibble,
+    tidyr,
+    utils
+Suggests:
+    fst,
+    ggplot2,
+    haven,
+    Hmisc,
+    huxtable,
+    readxl,
+    tables,
+    tinytex,
+    tools,
+    xtable
+RoxygenNote: 7.1.1
+LinkingTo: 
+    Rcpp
