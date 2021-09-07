@@ -164,3 +164,30 @@ create_randomstring <- function(length = 8L) {
 
   paste0(rnd_combo, collapse = '')
 }
+
+#' Determine **all** duplicated elements
+#'
+#' Similar to \link{duplicated} but returns all elements that are identified as a
+#' duplicate element (i.e. not just the duplicated elements following the first identified
+#' row as is default in R base \code{duplicated}).
+#'
+#' Should also work with \code{data.table} objects. To index all duplicated elements by multiple fields,
+#' provide them as a vector of names to the dataset. \code{data.table} uses \code{by} as a parameter for
+#' a similar purpose but this function follows the base R syntax of \code{duplicated()}.
+#'
+#' @param x A vector of values to determine duplicated elements (can be 1 or more columns).
+#' @param ... Additional parameters passed to \code{\link{duplicated}}
+#' @return Logical vector of index for duplicated elements.
+#' @export
+#' @examples
+#' testing <- data.frame(col1 = c(1, 1, 1, 2, 3, 3, 3),
+#'                       col2 = c(0, 100, 0, 100, 100.1, 101.10101, 100.00))
+#' index1 <- duplicated_all(testing[,c('col1')])
+#' index2 <- duplicated_all(testing[,c('col2')])
+#' index3 <- duplicated_all(testing[,c('col1', 'col2')])
+#' testing[index1,]
+#' testing[index2,]
+#' testing[index3,]
+duplicated_all <- function(x, ...) {
+  duplicated(x, ...)|duplicated(x, fromLast = TRUE, ...)
+}
