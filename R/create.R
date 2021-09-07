@@ -341,7 +341,7 @@ create_breaks <- function(x, breaks, format = FALSE, precision, divider = '-', l
     }
 
     levels_out <- seq(min(out), max(out))
-    corrected_lbl_length <- brk_labels[1:length(levels_out)]
+    corrected_lbl_length <- brk_labels[min(out):max(length(levels_out), max(out))]
 
     out <- factor(out, levels = levels_out, labels = corrected_lbl_length)
 
@@ -349,7 +349,7 @@ create_breaks <- function(x, breaks, format = FALSE, precision, divider = '-', l
   } else if (is.character(format)) {
 
     levels_out <- seq(min(out), max(out))
-    corrected_lbl_length <- format[1:length(levels_out)]
+    corrected_lbl_length <- format[min(out):max(length(levels_out), max(out))]
 
     out <- factor(out, levels = levels_out, labels = corrected_lbl_length)
   }
