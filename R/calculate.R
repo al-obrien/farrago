@@ -139,7 +139,7 @@ collapse_timesteps <- function(data, grp_id, date_start, date_end, threshold = 1
 
   # Create data.table and sort
   if(inherits(data, 'data.table')) {
-    data <- data.table::copy(data[,c(deparse(grp_id), deparse(date_start), deparse(date_end))])
+    data <- data.table::copy(data[, .SD, .SDcols = c(deparse(grp_id), deparse(date_start), deparse(date_end))]);
   } else {
     data <- data.table::as.data.table(data[,c(deparse(grp_id), deparse(date_start), deparse(date_end))])
   }
@@ -248,7 +248,7 @@ assign_episode <- function(data, grp_id, date, threshold = 1, preserve_id = FALS
 
   # Create data.table and sort
   if(inherits(data, 'data.table')) {
-    data <- data.table::copy(data[,c(deparse(grp_id), deparse(date))])
+    data <- data.table::copy(data[, .SD, .SDcols = c(deparse(grp_id), deparse(date))]);
   } else {
     data <- data.table::as.data.table(data[,c(deparse(grp_id), deparse(date))])
   }
