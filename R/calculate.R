@@ -279,6 +279,98 @@ assign_episode <- function(data, grp_id, date, threshold = 1, preserve_id = FALS
   }
 }
 
+#' Identify overlapping timesteps for cohorts
+#'
+#' \code{identify_overlap} will create a vector that flags rows in a cohort that have timesteps that are overlapping.
+#'
+#' Data when organized as a cohort will typically have a long-format with repeated records for an individual, each with a particular date-span for that instance.
+#' Sometimes, subsequent steps between these records are overlapping (data entry errors or otherwise) and can be identified so that when collapsed, only the max/min time-points are preserved.
+#' This is an important step in ensuring a cohort process has monotonic (i.e. ever increasing) timesteps.
+#'
+#' The logic involves sorting by the \code{date_start} for each group and comparing if that value is larger or smaller than the preceding \code{date_end}. When \code{FALSE}, this indicates that
+#' an overlap occurs; when \code{TRUE}, the flag will increment. This function does not do the collapse procedure, as that can have nuanced implications with \code{NA} values, but it will provide
+#' the groupings required to do so. It is recommended to have the original data sorted by group and dates so that the returned flag aligns correctly. For performance, this function is written primarily in \code{data.table}.
+#'
+#' @param data A data object (tibble, data.frame, data.table).
+#' @param grp_id Unique ID for each member of the cohort (unquoted).
+#' @param date_start Date format (e.g. YYYY-mm-dd) for entry point for record (unquoted).
+#' @param date_end Date format (e.g. YYYY-mm-dd) for exit point for record (unquoted).
+#' @param preserve_id Logical value, if set to \code{TRUE} will output list of original ID to ensure column merges back correctly.
+#' @return An integer vector (ordered by grp_id and dates) or a list containing the original id and collapse id.
+#' @examples
+#' # Load libraries
+#' library(dplyr); library(data.table); library(lubridate); library(magrittr)
+#' # Create fake data for scenarios
+#' test_data <- tribble(~grp_id, ~date_start, ~date_end,
+#'                      1, '2020-01-01', '2020-01-02',
+#'                      1, '2020-01-01', '2020-01-04',
+#'                      1, '2020-01-05', '2020-09-02',
+#'                      2, '2020-01-01', '2020-09-15',
+#'                      2, '2020-09-10', '2020-09-20',
+#'                      2, '2020-09-21', NA,
+#'                      3, '2020-01-01', '2020-01-02',
+#'                      3, '2020-01-02', '2020-01-20',
+#'                      3, '2020-01-15', '2020-01-19',
+#'                      3, '2020-01-22', '2020-04-02',
+#'                      3, '2020-04-22', NA,
+#'                      3, '2021-06-09', '2021-06-22') %>%
+#'   dplyr::mutate_at(vars(contains('date')), ymd)
+#'
+#' # Create vector of outputs (ensure original dataset is sorted)
+#' test_data$overlap_group <- identify_overlap(data = test_data,
+#'                                              grp_id = grp_id,
+#'                                              date_start = date_start,
+#'                                              date_end = date_end)
+#'
+#' test_data %>%
+#'   group_by(grp_id, overlap_group) %>%
+#'   mutate(min = min(date_start, na.rm = TRUE),
+#'          max = max(date_end, na.rm = TRUE),
+#'          min = if_else(is.infinite(min), NA_Date_, min),
+#'          max = if_else(is.infinite(max), NA_Date_, max)) # To avoid -/+ Inf on only NA groupings; can skip if not required
+#'
+#' @export
+identify_overlap <- function(data, grp_id, date_start, date_end, preserve_id = F){
+
+  # Data checks
+  if(missing(data)) stop('Please provide data to the function, either a tibble or data.frame')
+  if(missing(grp_id)) stop('Please provide an ID, a dummy one if only 1 group')
+  if(!lubridate::is.Date(data[[deparse(substitute(date_start))]]) || !lubridate::is.Date(data[[deparse(substitute(date_end))]])) stop('Provided date columns must be in a date format.')
+
+  # Add a check for NAs?
+
+  # NSE to SE
+  grp_id <- substitute(grp_id)
+  date_start <- substitute(date_start)
+  date_end <- substitute(date_end)
+
+  # Create data.table and sort
+  if(inherits(data, 'data.table')) {
+    data <- data.table::copy(data[, .SD, .SDcols = c(deparse(grp_id), deparse(date_start), deparse(date_end))]);
+  } else {
+    data <- data.table::as.data.table(data[,c(deparse(grp_id), deparse(date_start), deparse(date_end))])
+  }
+  data.table::setorderv(data, c(deparse(grp_id), deparse(date_start), deparse(date_end)))
+
+  # Create groupings for overlaps
+  out <- data[, .(grp_col = c(0, cumsum(as.numeric(shift(eval(date_start), type = 'lead')) > cummax(as.numeric(eval(date_end))))[-.N])),
+              by = eval(grp_id)]
+
+  # An issue can occur when there are NA values in end date prior to the final row... perhaps exclude?
+  if(any(is.na(out[,grp_col]))) warning('NA value included in grp values for overlaps, likely due to an unknown date_end value among a date_start/date_end pair that occurs before the final maximum date_start')
+
+  # Return vector
+  if(preserve_id) {
+
+    temp <- list(out[,eval(grp_id)], out[, grp_col])
+    names(temp) <- c(deparse(grp_id), 'overlap_id')
+    return(temp)
+
+  } else {
+    return(as.integer(out[,grp_col]))
+  }
+}
+
 #' Calculate crude rates (internal)
 #'
 #' @param num Numerator value.
