@@ -255,7 +255,7 @@ find_file <- function(path, name_pattern, slice_n = NULL, date_filter = NULL, da
     dplyr::arrange(dplyr::desc(time_create)) %>%
     {
       if(!is.null(slice_n)){
-        dplyr::slice(slice_n)
+        dplyr::slice(., slice_n)
       } else .
     } %>%
     dplyr::pull(file_name)
