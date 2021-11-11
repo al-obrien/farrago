@@ -138,7 +138,6 @@ my_rmt_file <- calculate_trimesters(my_rmt_file, date_of_birth_child)
 
 # View final dataset
 knitr::kable(my_rmt_file)
-
 ```
 
 ```{r, eval = FALSE}
