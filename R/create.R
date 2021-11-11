@@ -328,7 +328,7 @@ create_breaks <- function(x, breaks, format = FALSE, precision, divider = '-', l
     brk_labels <- vector()
 
     # Possible bottom label
-    if(min(out) == 0) {
+    if(min(out, na.rm = TRUE) == 0) {
       brk_labels <- paste0(lower_sym, breaks[1])
     }
 
@@ -336,20 +336,20 @@ create_breaks <- function(x, breaks, format = FALSE, precision, divider = '-', l
     brk_labels <- c(brk_labels, middle_labels)
 
     # Possible top label
-    if(max(out) == brk_length){ # Due to brk groups having 1 less then vector, they will be the same here
+    if(max(out, na.rm = TRUE) == brk_length){ # Due to brk groups having 1 less then vector, they will be the same here
       brk_labels <- c(brk_labels, paste0(upper_sym, breaks[brk_length]))
     }
 
-    levels_out <- seq(min(out), max(out))
-    corrected_lbl_length <- brk_labels[min(out):max(length(levels_out), max(out))]
+    levels_out <- seq(min(out, na.rm = TRUE), max(out, na.rm = TRUE))
+    corrected_lbl_length <- brk_labels[min(out, na.rm = TRUE):max(length(levels_out), max(out, na.rm = TRUE))]
 
     out <- factor(out, levels = levels_out, labels = corrected_lbl_length)
 
     # If applying custom labels
   } else if (is.character(format)) {
 
-    levels_out <- seq(min(out), max(out))
-    corrected_lbl_length <- format[min(out):max(length(levels_out), max(out))]
+    levels_out <- seq(min(out, na.rm = TRUE), max(out, na.rm = TRUE))
+    corrected_lbl_length <- format[min(out, na.rm = TRUE):max(length(levels_out), max(out, na.rm = TRUE))]
 
     out <- factor(out, levels = levels_out, labels = corrected_lbl_length)
   }

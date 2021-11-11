@@ -41,9 +41,9 @@ calculate_trimesters <- function(data, dob, gestation, avg_pregnancy = 40, avg_t
   # Set standard boundaries (counts back from birth date, so avg_pregnancy back from dob is the start of tri1)
   tri1wk_s = lubridate::dweeks(avg_pregnancy + buffer)
   tri1wk_e = tri1wk_s - lubridate::dweeks(avg_tri)
-  tri2wk_s = tri1wk_e + lubridate::ddays(1)
+  tri2wk_s = tri1wk_e - lubridate::ddays(1)
   tri2wk_e = tri2wk_s - lubridate::dweeks(avg_tri)
-  tri3wk_s = tri2wk_e + lubridate::ddays(1)
+  tri3wk_s = tri2wk_e - lubridate::ddays(1)
 
   # Create cut points (if gestation column exists, then see if the gestation exists, if not, then return TRUE and will also be taking default)
   if(gest_null) {

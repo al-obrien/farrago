@@ -95,8 +95,8 @@ convert_blank2NA <- function(data, target = "", skip_dates = FALSE, modify_inpla
 
   # Detect date cols
   if(skip_dates) {
-    date_cols_skip <- which(map_lgl(data, ~inherits(., 'Date')))
-    date_cols_keep <- which(map_lgl(data, ~!inherits(., 'Date')))
+    date_cols_skip <- which(purrr::map_lgl(data, ~inherits(., 'Date')))
+    date_cols_keep <- which(purrr::map_lgl(data, ~!inherits(., 'Date')))
   }
 
   # Select main method
@@ -264,6 +264,7 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 #' @param format Character vector following \code{\link[base]{strptime}}; defaults to \code{"\%Y-\%m-\%d"}.
 #' @param flu_wk_start Week of the year that flu season begins, all entries prior to that week will be in prior season; default set to 34.
 #' @param return_values Character vector of which values to return, default is set to all ('week', 'month', 'year', 'season').
+#' @param split_wk53 Boolean value to determine if week 53 values are split based upon isoweek (Sunday start).
 #' @return List containing vectors of week, month, year, and season related to provided dates.
 #'
 #' @seealso \code{\link{convert_wk_flu2calendar}}, \code{\link{convert_wk_calendar2flu}}
@@ -275,7 +276,7 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 #' convert_date2fluseason(date_list, flu_wk_start = 40)
 #'
 #' @export
-convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 34, return_values){
+convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 34, return_values, split_wk53 = TRUE){
 
   valid_returns <- c('week', 'month', 'year', 'season')
   if(!missing(return_values)) match.arg(return_values, valid_returns)
@@ -286,18 +287,21 @@ convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 34,
   # Parse year, month, wk number, wk day (vectors)
   year_test <- lubridate::year(date)
   month <- lubridate::month(date)
-  fmt_wk <- lubridate::isoweek(date)
+  fmt_wk <- lubridate::isoweek(date + 1)
   week_day <- lubridate::wday(date)
+  if(split_wk53){
+    # Calculate conditions for weeks and season
+    fmt_wk[fmt_wk == 53 & month == 12] <- 52 # Roll back to week 52 if in prior year, Dec
+    fmt_wk[fmt_wk == 53 & month == 1] <- 1 # Roll into week 1 if in next year, Jan
 
-  # Calculate conditions for weeks and season
-  fmt_wk[fmt_wk == 53 & month == 12] <- 52 # Roll back to week 52 if in prior year, Dec
-  fmt_wk[fmt_wk == 53 & month == 1] <- 1 # Roll into week 1 if in next year, Jan
-
+    # week <- fmt_wk
+    # index1 <- week_day == 1 & fmt_wk + 1 == 53 & month == 12 # if Sunday, in Dec & just shy of week 53 (will force to 52)
+    # index2 <- !index1 & week_day == 1 # Sunday but not matched to prior index
+    # week[index1] <- 52
+    # week[index2] <- fmt_wk[index2] + 1
+  }
   week <- fmt_wk
-  index1 <- week_day == 1 & fmt_wk + 1 == 53 & month == 12 # if Sunday, in Dec & just shy of week 53 (will force to 52)
-  index2 <- !index1 & week_day == 1 # Sunday but not matched to prior index
-  week[index1] <- 52
-  week[index2] <- fmt_wk[index2] + 1
+
 
   year <- year_test
   index3 <- week==1 & month == 12
