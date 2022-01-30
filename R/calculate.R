@@ -585,3 +585,69 @@ round_up_nice <- function(x, nice=seq(1,10)) {
   purrr::map2_dbl(x, scale_x, ~.y * nice[[which(.x <= .y * nice)[[1]]]])
 
 }
+
+#' Identify boundary of string match
+#'
+#' \code{calculate_str_boundary} will use boundary patterns and a target within the boundary to identify a chunk of interest within a string.
+#'
+#' Although RegEx can be used directly to achieve a similar results (forward lookups, etc.), this function provides a simple way to find a pattern within a
+#' particular boundary. This can be useful is edits of HTML files, where one wants to excise or adjust text between tags (e.g. \code{<script></script>}). The logic is as
+#' follows: (a) identify all points in the string where the boundaries and target are found, (b) calculate the difference between all combinations of the boundaries from the target,
+#' (c) determine which boundary are closest to the start and end of the target match, (d) return the entire range of the boundaries with the target either as a vector of start/end locations
+#' or the entire text content of the match.
+#'
+#' To vectorize over several strings and patterns, it is recommended to use a \code{for} loop, \code{apply} family, or \code{purrr} functions (e.g. \code{pmap}).
+#'
+#' @param string A character object of length 1.
+#' @param boundaries A character object of length 2 (concatenated).
+#' @param target A character object for the REGEX match within boundary.
+#' @param match_index Integer, determine which match to use if more than one found (default: 1).
+#' @param return_as_index Logical value, if set to \code{TRUE} will output the start and end points of the provided string, otherwise returns the exact text of the match.
+#' @return Either a vector of start and end points for the match, or a character value of the entire matched range in the provided string.
+#' @examples
+#' # Load libraries
+#' library(dplyr); library(stringr); library(magrittr)
+#'
+#' # Create fake text
+#' test_data <- '<head><script>RANDOMTEXT</script><script>TARGET.TEXT, OTHER RANDOMTEXT</script><script>RANDOMTEXT</script></head>'
+#'
+#' # Determine match
+#' tartget_chunk <- calculate_str_boundary(string = test_data,
+#'                                         boundaries = c('<script>', '</script>'),
+#'                                         target = 'TARGET\\.TEXT')
+#'
+#' # Delete from initial text
+#' stringr::str_sub(test_data, tartget_chunk[1], tartget_chunk[2]) <- ''
+#'
+#' @export
+calculate_str_boundary <- function(string, boundaries, target, match_index = 1, return_as_index = TRUE) {
+  if(length(string) > 1) stop('String must be only one element, use loop or apply family to expand to multiple entries')
+  if(length(boundaries) <2 || length(boundaries) > 2) stop('boundaries must be of length 2, one for start and end patterns')
+  if(Reduce(`==`, boundaries)) stop('boundaries of same value not yet supported.')
+  if(length(target) > 1) stop('target must be a vector of length 1.')
+
+  # Grab all positions of patterns
+  st_ptrn <- unname(stringr::str_locate_all(string, boundaries[1])[[1]][,1]) # unname removes possible start/stop aspect
+  sp_ptrn <- unname(stringr::str_locate_all(string, boundaries[2])[[1]][,2])
+  tar_ptrn <- stringr::str_locate_all(string, target)[[1]][match_index,1] # Grab based on match index
+
+  # Determine distances from possible boundaries
+  diff_st_tar <- outer(st_ptrn, tar_ptrn, `-`)
+  diff_sp_tar <- outer(sp_ptrn, tar_ptrn, `-`)
+
+  # Determine min distances from all combinations
+  min_below_0 <- max(diff_st_tar[which(diff_st_tar < 0)]) # i.e. largest of the smallest (closest to 0)
+  min_above_0 <- min(diff_sp_tar[which(diff_sp_tar > 0)])
+
+  # Index the proper boundary to target
+  index_st <- which(diff_st_tar == min_below_0, arr.ind = TRUE)[1,]
+  index_sp <- which(diff_sp_tar == min_above_0, arr.ind = TRUE)[1,]
+  boundary_limit <- c(st_ptrn[index_st[[1]]], sp_ptrn[index_sp[[1]]])
+
+  # Output...
+  if(return_as_index) {
+    return(boundary_limit)
+  } else {
+    return(substr(string, boundary_limit[1], boundary_limit[2]))
+  }
+}
