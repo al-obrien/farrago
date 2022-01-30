@@ -233,7 +233,7 @@ find_file <- function(path, name_pattern, slice_n = NULL, date_filter = NULL, da
                                                     ...),
                              stringsAsFactors = FALSE)
 
-  if(extract_date$file_name == 0) return(NA_character_)
+  if(length(extract_date$file_name) == 0) return(NA_character_)
 
   # Extract the dates from the files found depending on method...
   if(!is.null(date_pattern) && !is.null(date_format)) {
@@ -300,7 +300,7 @@ stow <- function(object, path = NULL, new_name = NULL , method = c('rds', 'fst',
   if(is.null(path) & !is.null(new_name)) stop('You must provide a path if you want to rename the output object. The method selected will determine the file type.');
   if(!is.null(path)) if(!dir.exists(path)) stop('The path provided does not exist. Please check and try again');
   if(all(is.null(path), is.null(new_name))) warning('A temporary file will be created for the object');
-  if(!is.null(new_name) && !is.character && length(new_name == 1)) stop('new_name must be a character of length 1');
+  if(!is.null(new_name) && !is.character(new_name) && length(new_name == 1)) stop('new_name must be a character of length 1');
 
   # Method check
   method <-  match.arg(method)
