@@ -191,3 +191,141 @@ create_randomstring <- function(length = 8L) {
 duplicated_all <- function(x, ...) {
   duplicated(x, ...)|duplicated(x, fromLast = TRUE, ...)
 }
+
+#' Find files containing pattern match
+#'
+#' Identify files within provided path that contain text that match a particular pattern.
+#'
+#' This function is often useful to quickly scan folders containing code that you need to find a particular key-phrase.
+#'
+#' @param path File path that contains files of interest (can look into child folders using \code{recursive = T})
+#' @param file_pattern Basic regular expression to pick up file name pattern (e.g. \code{'\\.(R|Rmd)'})
+#' @param text_pattern Grab the n-th file from the list (descending order by date). Default set to \code{NULL}, entire list is returned. Set to \code{1} if want just the latest match returned.
+#' @param recursive Reduce set of discovered file based upon a date threshold (default: \code{NULL}, no filtering occurs).
+#' @param locale Passed to \code{\link[readr]{read_file}}, controls encoding and similar file properties.
+#' @param ... Additional parameters passed to \code{\link{grepl}}, helpful to add \code{perl} capabilities in pattern search.
+#'
+#' @return Returns character vector for file names with matches
+#' @export
+#' @examples
+#'
+#' # Find pattern within set of files
+#' find_file_content('./R', file_pattern = '\\.(R|Rmd)', text_pattern = 'sapply')
+#'
+find_file_content <- function(path, file_pattern = NULL, text_pattern, recursive = FALSE, locale = readr::default_locale(), ...) {
+
+  file_list <- list.files(path, recursive = recursive, pattern = file_pattern, full.names = T)
+  file_names <- basename(file_list)
+
+  file_names[sapply(X = as.list(file_list), FUN = function(x) grepl(pattern = text_pattern, readr::read_file(x, locale = locale), ...))]
+}
+
+#' Find the all dates for weekday in a month
+#'
+#' Determine the exact days (i.e. YYYY-MM-DD) that a specific day of the week falls on.
+#'
+#' @param year character or numeric for 4 digit year.
+#' @param month character or numeric (01-12) for month.
+#' @param weekday character value for day of the week (e.g. 'Monday').
+#' @return Date vector object in YYYY-MM-DD format.
+#' @export
+#' @examples
+#' list_weekdays(2021, 12, 'Monday')
+#' list_weekdays(2021, 12, 'Monday')[1]
+#' list_weekdays('2021', 12, 'Monday')
+#' lapply(c(1990:2000), list_weekdays, month = 12, weekday = 'Monday')
+list_weekdays <- function(year, month, weekday) {
+  match.arg(weekday, choices = c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'))
+
+  year_month <- paste(year, month, sep = '-')
+  date_min <- lubridate::ymd(paste(year_month, '01', sep = '-'))
+  date_max <- lubridate::ceiling_date(date_min, unit = 'month')-1
+  day_range <- seq(date_min, date_max, by = 'day')
+
+  day_range[grepl(weekday, weekdays(day_range))]
+}
+
+#' Find Easter date by year
+#'
+#' Determine the day of the year Easter occurs. Coded using the Gauss algorithm.
+#'
+#' @source \url{https://en.wikipedia.org/wiki/Date_of_Easter#Algorithms}
+#' @param year character or numeric for 4 digit year.
+#' @return Date object in YYYY-MM-DD format.
+#' @export
+#' @examples
+#' find_easter(2021)
+#' lapply(c(1990:2000), find_easter)
+find_easter <- function(year){
+
+  a <- year %% 19
+  b <- year %% 4
+  c <- year %% 7
+
+  k <- year %/% 100
+  p <- ((13 + 8*k) %/% 25)
+  q <- k %/% 4
+  M <- (15 - p + k - q) %% 30
+  N <- (4 + k - q) %% 7
+
+  d <- (19 * a + M) %% 30
+  e <- (2*b + 4*c + 6*d + N) %% 7
+  e_day <- 22 + d + e
+
+  if(d == 29 && e == 6) {
+    e_month <- 04; e_day = 19;
+  } else if (d == 28 && e == 6 && (11 * M + 11) %% 30 < 19) {
+    e_month <- 04; e_day = 18;
+  } else {
+    if (e_day > 31) {
+      e_month <- 04; e_day <- e_day - 31
+    } else {
+      e_month <- 03
+    }
+  }
+  return(lubridate::ymd(paste(year, e_month, e_day, sep = '-')))
+}
+
+#' Find Victoria day by year
+#'
+#' Determine the day of the year Victoria day (Monday before 25th of May) is observed as a holiday.
+#'
+#' @param year character or numeric for 4 digit year.
+#' @return Date object in YYYY-MM-DD format.
+#' @export
+#' @examples
+#' find_victoriaday(2021)
+#' lapply(c(1990:2000), find_victoriaday)
+find_victoriaday <- function(year){
+  bday <- lubridate::ymd(paste(year, '05', '25', sep = '-'))
+  bday_wd <- lubridate::wday(bday, week_start = 1)
+  if(bday_wd == 1) return(bday - 7) else return(bday - bday_wd + 1)
+}
+
+#' Find observed holiday over weekends
+#'
+#' When a holiday lands on Saturday or Sunday, they are typically observed the following Monday. Boxing day is an exception and will
+#' occur on Tuesday if Dec-26 occurs on a Monday.
+#'
+#' @param year character or numeric for 4 digit year.
+#' @param month  character or numeric (01-12) for month of which holiday of interest occurs.
+#' @param day character or numeric (01-31) for day of which holiday of interest occurs.
+#' @return Date object in YYYY-MM-DD format.
+#' @export
+#' @examples
+#' find_observedday(2021, month = 12, day = 25)
+#' lapply(c(1990:2000), find_observedday, month = 12, day = 25)
+find_observedday <- function(year, month, day){
+  date_c <- lubridate::ymd(paste(year, month, day, sep = '-'))
+  if(weekdays(date_c) == 'Saturday') {
+    return(date_c+2)
+  } else if(weekdays(date_c) == 'Sunday' && (lubridate::month(date_c) == 12 && lubridate::day(date_c) == 26))  { # Boxing day logic
+    return(date_c + 2)
+  } else if(weekdays(date_c) == 'Monday' && (lubridate::month(date_c) == 12 && lubridate::day(date_c) == 26))  { # Boxing day logic
+    return(date_c + 1)
+  } else if(weekdays(date_c) == 'Sunday') {
+    return(date_c + 1)
+  } else {
+    return(date_c)
+  }
+}
