@@ -8,7 +8,8 @@ convert_date2fluseason(
   date,
   format = "\%Y-\%m-\%d",
   flu_wk_start = 34,
-  return_values
+  return_values,
+  split_wk53 = TRUE
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ convert_date2fluseason(
 \item{flu_wk_start}{Week of the year that flu season begins, all entries prior to that week will be in prior season; default set to 34.}
 
 \item{return_values}{Character vector of which values to return, default is set to all ('week', 'month', 'year', 'season').}
+
+\item{split_wk53}{Boolean value to determine if week 53 values are split based upon isoweek (Sunday start).}
 }
 \value{
 List containing vectors of week, month, year, and season related to provided dates.
