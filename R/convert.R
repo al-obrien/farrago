@@ -155,24 +155,47 @@ convert_blank2NA <- function(data, target = "", skip_dates = FALSE, modify_inpla
 #' Convert elements to a new value
 #'
 #' \code{convert_elements} will convert a set of values in a column to a designated replacement value. This can be
-#' viewed as a shortcut to using \code{\link[forcats]{fct_collapse}}.
+#' viewed as a shortcut to using \code{\link[forcats]{fct_collapse}}. Can also accept 'NA' as a target and should return
+#' the input class for that column.
 #'
 #' @param data Data object.
 #' @param col Character vector of column to conduct conversion.
 #' @param target Character vector of levels for conversion.
 #' @param replacement Value of replacement (typically a Character).
-#' @param convert2factor Logical vector, if \code{TRUE}, will convert characters to factors.
+#' @param convert2Factor Logical vector, if \code{TRUE}, will convert characters to factors.
 #' @return Dataset with reformatted columns.
 #'
 #' @export
-convert_elements <- function(data, col, target, replacement = NA, convert2factor = TRUE) {
-  data[, col] <- as.character(data[[col]]) # Convert to char
-  index <- which(data[[col]] %in% target) # Replace all unknown/others with NA (missing is already NA by combinedData code)
+convert_elements <- function(data, col, target, replacement = NA, convert2factor = T) {
+
+  class_type <- class(data[[col]])
+
+  if(!class_type %in% c('factor', 'integer', 'numeric', 'character', 'double')) stop('Unsupported class provided, only factor, integer, numeric, character, and double are accepted.')
+  if(is.na(target)) {
+    index <- which(is.na(data[[col]]))
+  } else {
+    data[, col] <- as.character(data[[col]]) # Convert to char
+    index <- which(data[[col]] %in% target) # Replace all unknown/others with NA (missing is already NA by combinedData code)
+  }
   data[index, col] <- replacement # Replace
-  if(convert2factor) {
+
+  if(convert2factor == T) {
     data[, col] <- factor(data[[col]])
   } # Convert to factor and drop the unused levels
-  return(data)
+
+  # Ensure return value is the one provided (may not be entirely necessary)
+  if(class_type == 'double' & !convert2factor) {
+    data[, col] <- as.double(data[[col]])
+    return(data)
+  } else if (class_type == 'integer' & !convert2factor) {
+    data[, col] <- as.integer(data[[col]])
+    return(data)
+  } else if (class_type == 'numeric' & !convert2factor) {
+    data[, col] <- as.numeric(data[[col]])
+    return(data)
+  } else {
+    return(data)
+  }
 }
 
 #' Convert calendar week to flu week

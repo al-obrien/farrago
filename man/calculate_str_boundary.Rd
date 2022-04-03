@@ -39,6 +39,7 @@ or the entire text content of the match.
 To vectorize over several strings and patterns, it is recommended to use a \code{for} loop, \code{apply} family, or \code{purrr} functions (e.g. \code{pmap}).
 }
 \examples{
+\dontrun{
 # Load libraries
 library(dplyr); library(stringr); library(magrittr)
 
@@ -52,5 +53,5 @@ tartget_chunk <- calculate_str_boundary(string = test_data,
 
 # Delete from initial text
 stringr::str_sub(test_data, tartget_chunk[1], tartget_chunk[2]) <- ''
-
+}
 }

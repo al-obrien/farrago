@@ -4,7 +4,7 @@
 \alias{convert_elements}
 \title{Convert elements to a new value}
 \usage{
-convert_elements(data, col, target, replacement = NA, convert2factor = TRUE)
+convert_elements(data, col, target, replacement = NA, convert2factor = T)
 }
 \arguments{
 \item{data}{Data object.}
@@ -15,12 +15,13 @@ convert_elements(data, col, target, replacement = NA, convert2factor = TRUE)
 
 \item{replacement}{Value of replacement (typically a Character).}
 
-\item{convert2factor}{Logical vector, if \code{TRUE}, will convert characters to factors.}
+\item{convert2Factor}{Logical vector, if \code{TRUE}, will convert characters to factors.}
 }
 \value{
 Dataset with reformatted columns.
 }
 \description{
 \code{convert_elements} will convert a set of values in a column to a designated replacement value. This can be
-viewed as a shortcut to using \code{\link[forcats]{fct_collapse}}.
+viewed as a shortcut to using \code{\link[forcats]{fct_collapse}}. Can also accept 'NA' as a target and should return
+the input class for that column.
 }
