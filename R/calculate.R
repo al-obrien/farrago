@@ -605,6 +605,7 @@ round_up_nice <- function(x, nice=seq(1,10)) {
 #' @param return_as_index Logical value, if set to \code{TRUE} will output the start and end points of the provided string, otherwise returns the exact text of the match.
 #' @return Either a vector of start and end points for the match, or a character value of the entire matched range in the provided string.
 #' @examples
+#' \dontrun{
 #' # Load libraries
 #' library(dplyr); library(stringr); library(magrittr)
 #'
@@ -618,7 +619,7 @@ round_up_nice <- function(x, nice=seq(1,10)) {
 #'
 #' # Delete from initial text
 #' stringr::str_sub(test_data, tartget_chunk[1], tartget_chunk[2]) <- ''
-#'
+#' }
 #' @export
 calculate_str_boundary <- function(string, boundaries, target, match_index = 1, return_as_index = TRUE) {
   if(length(string) > 1) stop('String must be only one element, use loop or apply family to expand to multiple entries')
@@ -650,4 +651,28 @@ calculate_str_boundary <- function(string, boundaries, target, match_index = 1, 
   } else {
     return(substr(string, boundary_limit[1], boundary_limit[2]))
   }
+}
+
+#' Calculate originating column for a coalesce operation
+#'
+#' \code{calculate_coalesce_origin} will determine the column from which a value was filled during a coalesce procedure. Ensure
+#' that all blanks or other undesired patterns are converted to \code{NA} before starting. Provide columns in order coalesce is expected to occur.
+#'
+#' @param data Originating dataset that coalesce procedure occurred on.
+#' @param cols Character vector of column names, in order coalesce would occur.
+#' @return Character vector with names of originating columns.
+#' @examples
+#' testdata <- data.frame(col1 = c(1,2,3), col2 = c(NA, NA, 3), col3 = c(1, NA, 4))
+#' calculate_coalesce_origin(testdata, c('col2', 'col3'))
+#' @export
+calculate_coalesce_origin <- function(data, cols) {
+
+  # Subset by cols of interest
+  data <- data[, cols]
+
+  # Grab index without first missing, in order... if want value, need to return i[index] from apply
+  index <- apply(data, 1 , function(i) {which(!is.na(i))[1]}) # Transpose needed if returning multiple rowwise calcs instead of 1 vector
+  col_name <- colnames(data)[index]
+
+  return(col_name)
 }
