@@ -1,7 +1,7 @@
 Package: farrago
 Type: Package
 Title: A random collection of helpful code baubles
-Version: 0.1.2
+Version: 0.2.0
 Authors@R: c(
     person('Allen', 'OBrien', email= 'allen.g.obrien@gmail.com', role = c('aut', 'cre')),
     person("Tommy", role = c("cph", "ctb"), comment = "Copyright holder and author of original contribution for `round_up_nice` function."),
