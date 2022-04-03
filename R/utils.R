@@ -22,9 +22,14 @@ count_decimals <- function(x) {
   x[index1] <- vapply(x[index1],
                       function(x) {
                         str <- as.character(x)
-                        nchar(strsplit(str, "\\.")[[1]][2])
-                      },
-                      numeric(1))
+                        out <- nchar(strsplit(str, "\\.")[[1]][2])
+                        if(is.na(out)) {
+                          warning('NA converted to 0 in decimal count');
+                          0;
+                        } else {
+                          out
+                        }
+                      }, numeric(1))
 
   x[index2] <- 0
 
