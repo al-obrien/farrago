@@ -288,18 +288,42 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 #' @param flu_wk_start Week of the year that flu season begins, all entries prior to that week will be in prior season; default set to 34.
 #' @param return_values Character vector of which values to return, default is set to all ('week', 'month', 'year', 'season').
 #' @param split_wk53 Boolean value to determine if week 53 values are split based upon isoweek (Sunday start).
+#' @param sunday_start Boolean value to determine if the start of a week is a Sunday. If set to \code{FALSE}, Monday is the start of the week.
 #' @return List containing vectors of week, month, year, and season related to provided dates.
 #'
 #' @seealso \code{\link{convert_wk_flu2calendar}}, \code{\link{convert_wk_calendar2flu}}
 #' @note Adapted from original with courtesy of M. Ware.
 #' @examples
-#' date_list <- c('2020-08-30', '2020-09-01', '2020-09-23', '2020-01-01', '2019-12-31', '2018-01-01', '2017-01-01', '2016-01-01')
+#'
+#' # Basic examples
+#' date_list <- c('2022-01-01', '2021-01-01', '2020-08-30', '2020-09-01', '2020-09-23', '2020-01-01', '2019-12-31', '2018-01-01', '2017-01-01', '2016-01-01')
 #' convert_date2fluseason(date_list)
 #' convert_date2fluseason(date_list, return_values = 'season')
 #' convert_date2fluseason(date_list, flu_wk_start = 40)
 #'
+#' # Detailed example
+#' library(dplyr)
+#' library(tidyr)
+#'
+#' # Create test data for known cases by season
+#' test_data <- data.frame(season = c(1, 1, 1, 2, 2),
+#'                         date = lubridate::ymd(c('2020-06-14', '2020-08-09', '2020-08-16', '2021-08-29', '2021-09-12', '2021-01-01')),
+#'                         n = c(1,1,1,1, 2))
+#'
+#' # Determine the season with the specific date2fluseason function
+#' test_data$wk <- AHRtools::convert_date2fluseason(test_data$date, return_values = 'week')$week
+#' test_data$yr <- AHRtools::convert_date2fluseason(test_data$date, return_values = 'year')$year
+#'
+#' # To fill empty periods join to full combination of season, year, and week
+#' test_data <- full_join(test_data, expand(test_data, season, yr, wk = 1:52), by = c('season', 'yr', 'wk'))
+#' test_data$n <- ifelse(is.na(test_data$n), 0 , test_data$n)
+#' test_data <-  arrange(test_data, season, wk)
+#' test_data$date <- if_else(is.na(test_data$date),
+#'                           ISOweek::ISOweek2date(paste(test_data$yr, paste0('W',test_data$wk), 1, sep = '-')),
+#'                           test_data$date)
+#'
 #' @export
-convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 34, return_values, split_wk53 = TRUE){
+convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 34, return_values, split_wk53 = TRUE, sunday_start = TRUE){
 
   valid_returns <- c('week', 'month', 'year', 'season')
   if(!missing(return_values)) match.arg(return_values, valid_returns)
@@ -310,8 +334,9 @@ convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 34,
   # Parse year, month, wk number, wk day (vectors)
   year_test <- lubridate::year(date)
   month <- lubridate::month(date)
-  fmt_wk <- lubridate::isoweek(date + 1)
+  if(sunday_start) {fmt_wk <- lubridate::isoweek(date + 1)} else {fmt_wk <- lubridate::isoweek(date)} # +1 for Sunday start...
   week_day <- lubridate::wday(date)
+
   if(split_wk53){
     # Calculate conditions for weeks and season
     fmt_wk[fmt_wk == 53 & month == 12] <- 52 # Roll back to week 52 if in prior year, Dec
@@ -331,7 +356,7 @@ convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 34,
   year[index3] <- year_test[index3]+1
 
   season <- rep(NA, length(fmt_wk))
-  index4 <- fmt_wk < flu_wk_start
+  index4 <- fmt_wk < flu_wk_start | (fmt_wk == 52 & month == 1) # Go back a year for season for those in 52 wk but next year month
   index5 <- !index4 & fmt_wk == 53 & month == 12
   season[index4] <- paste(year[index4]-1, year[index4], sep="-")
   season[index5 & is.na(season)] <- paste(year[index5 & is.na(season)]+1, year[index5 & is.na(season)]+2, sep="-")
