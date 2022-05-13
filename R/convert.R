@@ -285,7 +285,7 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 #'
 #' @param date Character vector in date format of \code{'YYYY-mm-dd'}.
 #' @param format Character vector following \code{\link[base]{strptime}}; defaults to \code{"\%Y-\%m-\%d"}.
-#' @param flu_wk_start Week of the year that flu season begins, all entries prior to that week will be in prior season; default set to 34.
+#' @param flu_wk_start Week of the year that flu season begins, all entries prior to that week will be in prior season; default set to 35.
 #' @param return_values Character vector of which values to return, default is set to all ('week', 'month', 'year', 'season').
 #' @param split_wk53 Boolean value to determine if week 53 values are split based upon isoweek (Sunday start).
 #' @param sunday_start Boolean value to determine if the start of a week is a Sunday. If set to \code{FALSE}, Monday is the start of the week.
@@ -323,7 +323,7 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 #'                           test_data$date)
 #'
 #' @export
-convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 34, return_values, split_wk53 = TRUE, sunday_start = TRUE){
+convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 35, return_values, split_wk53 = TRUE, sunday_start = TRUE){
 
   valid_returns <- c('week', 'month', 'year', 'season')
   if(!missing(return_values)) match.arg(return_values, valid_returns)
