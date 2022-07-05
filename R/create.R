@@ -211,6 +211,159 @@ create_datalist <- function(data_names, envir = .GlobalEnv) {
   return(templist)
 }
 
+#' Create middle labels with 'precision format' (internal)
+#'
+#' @inheritParams create_breaks
+#' @param brk_length Length of number of breaks provided to parent function.
+#'
+#' @seealso \code{\link{create_breaks}}
+label_notation_precision <- function(breaks, brk_length, precision, divider, left.open, rightmost.closed) {
+
+  if(all(left.open, rightmost.closed)) { #TT
+    upper_sym <- '>'
+    lower_sym <- '<'
+    middle_labels <- c(paste0(breaks[1], divider, breaks[2]), paste0(breaks[2:(brk_length-1)] + precision, divider, breaks[3:brk_length]))
+
+  }  else if(left.open && !rightmost.closed) { #FF
+    upper_sym <- '>'
+    lower_sym <- '<='
+    middle_labels <- c(paste0(breaks[1], divider, breaks[2]), paste0(breaks[2:(brk_length-1)] + precision, divider, breaks[3:brk_length]))
+
+  } else if(!left.open && rightmost.closed) { #TF
+    upper_sym <- '>'
+    lower_sym <- '<'
+    lb <- breaks[1:(brk_length-2)]
+    ub <- breaks[2:(brk_length-1)] - precision
+    index <- purrr::map2_lgl(lb, ub, ~`==`(.x,.y))
+    middle_labels <- character(length(index)+1) # +1 for the top bracket that is inclusive
+    middle_labels[which(index)] <- paste0(lb[index])
+    middle_labels[which(!index)] <- paste0(lb[!index], divider, ub[!index])
+    middle_labels[length(index)+1] <- paste0(breaks[(brk_length-1)], divider, breaks[(brk_length)])
+
+  } else if(all(!left.open, !rightmost.closed)) { #FT
+    upper_sym <- '>='
+    lower_sym <- '<'
+    lb <- breaks[1:(brk_length-1)]
+    ub <- breaks[2:(brk_length)] - precision
+    index <-  purrr::map2_lgl(lb, ub, ~`==`(.x,.y))
+    middle_labels <- character(length(index)) # All the middle labels get changed as top not inclusive
+    middle_labels[which(index)] <- paste0(lb[index])
+    middle_labels[which(!index)] <- paste0(lb[!index], divider, ub[!index])
+  }
+  return(list(upper_sym = upper_sym,
+              lower_sym = lower_sym,
+              middle_labels = middle_labels))
+}
+
+#' Create middle labels with 'bracket format' (internal)
+#'
+#' @inheritParams create_breaks
+#' @param brk_length Length of number of breaks provided to parent function.
+#'
+#' @seealso \code{\link{create_breaks}}
+label_notation_brackets <- function(breaks, brk_length, divider, left.open, rightmost.closed) {
+  if(all(left.open, rightmost.closed)) { #TT
+    upper_sym <- '>'
+    lower_sym <- '<'
+
+    middle_labels <- paste0(breaks[1:(brk_length-1)], divider, breaks[2:brk_length])
+    middle_labels[2:(brk_length-1)] <- paste0('(', middle_labels[2:(brk_length-1)], ']') # interior
+    middle_labels[1] <- paste0('[', middle_labels[1], ']') # first edge
+
+  } else if(left.open && !rightmost.closed) { #FF
+    upper_sym <- '>'
+    lower_sym <- '<='
+
+    middle_labels <- paste0(breaks[1:(brk_length-1)], divider, breaks[2:brk_length])
+    middle_labels <- paste0('(', middle_labels, ']')
+
+  } else if(!left.open && rightmost.closed) { #TF
+    upper_sym <- '>'
+    lower_sym <- '<'
+    lb <- breaks[1:(brk_length-2)]
+
+    ub <- breaks[2:(brk_length-1)]
+    index <- purrr::map2_lgl(lb, ub, ~`==`(.x,.y))
+    middle_labels <- character(length(index)+1) # +1 for the top bracket that is inclusive
+    middle_labels[which(index)] <- paste0(lb[index])
+    middle_labels[which(!index)] <- paste0(lb[!index], divider, ub[!index])
+    middle_labels[length(index)+1] <- paste0(breaks[(brk_length-1)], divider, breaks[(brk_length)])
+
+    middle_labels[1:(brk_length-2)] <- paste0('[', middle_labels[1:(brk_length-2)], ')')
+    middle_labels[brk_length-1] <- paste0('[', middle_labels[brk_length-1], ']')
+
+  } else if(all(!left.open, !rightmost.closed)) { #FT
+    upper_sym <- '>='
+    lower_sym <- '<'
+
+    lb <- breaks[1:(brk_length-1)]
+    ub <- breaks[2:(brk_length)]
+    index <-  purrr::map2_lgl(lb, ub, ~`==`(.x,.y))
+    middle_labels <- character(length(index)) # All the middle labels get changed as top not inclusive
+    middle_labels[which(index)] <- paste0(lb[index])
+    middle_labels[which(!index)] <- paste0(lb[!index], divider, ub[!index])
+
+    middle_labels <- paste0('[', middle_labels, ')')
+  }
+
+  return(list(upper_sym = upper_sym,
+              lower_sym = lower_sym,
+              middle_labels = middle_labels))
+
+}
+
+#' Create middle labels with 'sign format' (internal)
+#'
+#' @inheritParams create_breaks
+#' @param brk_length Length of number of breaks provided to parent function.
+#'
+#' @seealso \code{\link{create_breaks}}
+label_notation_signs <- function(breaks, brk_length, precision, divider, left.open, rightmost.closed) {
+
+  if(all(left.open, rightmost.closed)) { #TT
+    upper_sym <- '>'
+    lower_sym <- '<'
+
+    middle_labels <- c(paste0(breaks[1], divider, breaks[2]), # First edge
+                       paste0('>', breaks[2:(brk_length-1)], divider, breaks[3:brk_length])) # interior
+
+
+  } else if(left.open && !rightmost.closed) { #FF
+    upper_sym <- '>'
+    lower_sym <- '<='
+
+    middle_labels <- paste0('>', breaks[1:(brk_length-1)], divider, breaks[2:brk_length])
+
+  } else if(!left.open && rightmost.closed) { #TF
+    upper_sym <- '>'
+    lower_sym <- '<'
+    lb <- breaks[1:(brk_length-2)]
+
+    ub <- breaks[2:(brk_length-1)]
+    index <- purrr::map2_lgl(lb, ub, ~`==`(.x,.y))
+    middle_labels <- character(length(index)+1) # +1 for the top bracket that is inclusive
+    middle_labels[which(index)] <- paste0(lb[index])
+    middle_labels[which(!index)] <- paste0(lb[!index], divider, '<',ub[!index]) # Sign here...
+    middle_labels[length(index)+1] <- paste0(breaks[(brk_length-1)], divider, breaks[(brk_length)])
+
+  } else if(all(!left.open, !rightmost.closed)) { #FT
+    upper_sym <- '>='
+    lower_sym <- '<'
+
+    lb <- breaks[1:(brk_length-1)]
+    ub <- breaks[2:(brk_length)]
+    index <-  purrr::map2_lgl(lb, ub, ~`==`(.x,.y))
+    middle_labels <- character(length(index)) # All the middle labels get changed as top not inclusive
+    middle_labels[which(index)] <- paste0(lb[index])
+    middle_labels[which(!index)] <- paste0(lb[!index], divider, '<', ub[!index])
+  }
+
+  return(list(upper_sym = upper_sym,
+              lower_sym = lower_sym,
+              middle_labels = middle_labels))
+
+}
+
 #' Create breaks based on numeric input
 #'
 #' Break continuous values into bins and apply clean labeling. Wraps around \code{\link{findInterval}} and \code{\link{factor}} functions.
@@ -219,17 +372,21 @@ create_datalist <- function(data_names, envir = .GlobalEnv) {
 #' values sent to \code{findInterval} via \code{...}. When providing custom labels to the \code{format} parameter ensure you have compensated for a label that
 #' may sit outside the typical boundary of your provided breaks (e.g. <0 if you lowest break is 0 but your data can take on negative values).
 #' If this function is not providing what you require, try looking at \code{\link{cut}}. If you need the ability to automatically cut groups into defined sizes
-#' look at the \code{{classInt}} or provide \code{\link{cut}} a single value for the number of equal breaks to create.
+#' look at the \code{{classInt}} or provide \code{\link{cut}} a single value for the number of equal breaks to create. \code{create_breaks} also has a formatting
+#' option to use bracket notation for the middle bounds, this may be preferred if the default automatic formatting with assigned precision is not to one's liking.
 #'
-#' Adjusting the \code{precision} affects the rounding percision of the labels. By default it will use the smallest decimal place in the parameter \code{brks}
+#' Adjusting the \code{precision} affects the rounding precision of the labels. By default it will use the smallest decimal place in the parameter \code{brks}.
+#' Depending on use-case, it may be important to ensure your binning is occurring as expected (e.g. that partial ages like 5.4 yo bins in 4-5 or 5-6). Rounding prior to
+#' using this function may help avoid such issues.
 #'
 #' @param x Numeric vector to create break groupings from.
 #' @param breaks Numeric vector of breakpoints supplied to \code{\link{findInterval}}.
 #' @param format Provide your own labels; if set to \code{TRUE} the clean labeling will be set automatically.
-#' @param precision Numeric value, determines how to adjust boundary of labels. Default will determine from provided breaks.
+#' @param precision Numeric value, determines how to adjust boundary of labels. Default will determine from provided breaks (e.g. 1 decimal place means precision of 0.1).
 #' @param divider Character defining the symbol separating adjacent label values (default is a dash).
-#' @param left.open Logical; passed to \code{\link{findInterval}}.
+#' @param left.open Logical; passed to \code{\link{findInterval}.
 #' @param rightmost.closed Logical; passed to \code{\link{findInterval}}.
+#' @param format_notation Character vector to determine label style; valid inputs include 'precision', 'brackets', or 'signs' (only the first uses the precision parameter).
 #' @param ... Additional parameters supplied to \code{\link{findInterval}}
 #'
 #' @return Vector with assignment for each grouping (numeric if no format provided, factor when format provided)
@@ -242,23 +399,48 @@ create_datalist <- function(data_names, envir = .GlobalEnv) {
 #' breaks = c(0, 1, 10,50,100)
 #' labels = c('<0', '0-1', '1-10', '10-50', '50-100', '100+')
 #'
-#' #If many break labels, try using rep() or seq(), and paste them in
+#' #If many break labels, try using rep() or seq(), and paste them in interation
 #' labels2 = purrr::map2_chr(seq(10, 99, 10),  seq(20, 100, 10)-1, ~paste0(.x, '-', .y))
 #'
 #' # Create break without any formatting
 #' breaks_numeric <- create_breaks(data, breaks)
 #'
 #' # Create break with default label formatting
-#' breaks_auto <- create_breaks(data, breaks, TRUE)
+#' breaks_auto <- create_breaks(data, breaks, format = TRUE)
 #'
 #' # Create break with custom label formatting
-#' breaks_custom <- create_breaks(data, breaks, labels)
+#' breaks_custom <- create_breaks(data, breaks, format = labels)
 #'
-create_breaks <- function(x, breaks, format = FALSE, precision, divider = '-', left.open = FALSE, rightmost.closed = FALSE, ...) {
+#' # Create breaks without any precision (will see start/end of categories as same number)
+#' create_breaks(data, breaks, format = labels, precision = 0)
+#'
+#' # Cut function as alternative
+#' cut(data, breaks)
+#'
+#' # Cut function fills NA if you dont define -Inf and +Inf in the breaks
+#' # ... also has less auto-formatting abilities (index only, bracket notation or custom)
+#' cut(data, c(-Inf, 0, 1, 10,50,100, Inf))
+#' cut(data, c(-Inf, 0, 1, 10,50,100, Inf), labels = FALSE) # Only index the group, not auto-label
+#'
+#' # Compare various outputs
+#' x <- c(0.4, 0.6, 1:10)
+#' v <- c(0.5, 5, 7, 9)
+#' cbind(x,
+#' TF=as.character(create_breaks(x, v, left.open =T, rightmost.closed = F, format = T,precision = 0)),
+#' FF=as.character(create_breaks(x, v, left.open =F, rightmost.closed = F, format = T,precision = 0)),
+#' TT=as.character(create_breaks(x, v, left.open =T, rightmost.closed = T, format = T,precision = 0)),
+#' FT=as.character(create_breaks(x, v, left.open =F, rightmost.closed = T, format = T,precision = 0)),
+#' TF2=as.character(create_breaks(x, v, left.open =T, rightmost.closed = F, format = T, format_notation = 'brackets')),
+#' FF2=as.character(create_breaks(x, v, left.open =F, rightmost.closed = F, format = T, format_notation = 'brackets')),
+#' TT2=as.character(create_breaks(x, v, left.open =T, rightmost.closed = T, format = T, format_notation = 'brackets')),
+#' FT2=as.character(create_breaks(x, v, left.open =F, rightmost.closed = T, format = T, format_notation = 'brackets')))
+create_breaks <- function(x, breaks, format = FALSE, precision, divider = '-', left.open = FALSE, rightmost.closed = FALSE, format_notation = 'precision', ...) {
 
   # Error checking and stops
   stopifnot(is.numeric(x), is.numeric(breaks))
   message('Break intervals were: ', paste(breaks, collapse = ' '))
+  format_notation <- match.arg(format_notation, choices = c('precision', 'brackets', 'signs'))
+  if(format_notation != 'precision') message('Based on format_notation selection, the precision parameter will be ignored')
 
   # Ensure in correct order!
   breaks <- sort(breaks)
@@ -268,12 +450,18 @@ create_breaks <- function(x, breaks, format = FALSE, precision, divider = '-', l
     max_brk_dec <- max(count_decimals(breaks))
 
     if(max_brk_dec==0) {
+      precision <- 1 # If no decimals, default to 1's place
+    } else if(is.infinite(max_brk_dec)) {
+      message('Break maximum is infinite')
       precision <- 1
     } else {
-      precision <- max_brk_dec
+      precision <- 1 * (10 ^ -(max_brk_dec)) # so 1 = 0.1
     }
 
-    message('Precision set to: ',precision)
+    message('Precision set to: ', precision)
+  }
+  if(precision == 0) {
+    warning('Precision set to: 0. Be careful interpreting label boundaries; providing precision or using bracket notation parameter will give more explicit labels')
   }
 
   # Create the initial interval based on provided details
@@ -284,39 +472,18 @@ create_breaks <- function(x, breaks, format = FALSE, precision, divider = '-', l
 
   # Logic checks based on intervals that affect subsequent naming
   if(brk_length>=3){
-    if(all(left.open, rightmost.closed)) { #TT
-      upper_sym <- '>'
-      lower_sym <- '<'
-      middle_labels <- c(paste0(breaks[1], divider, breaks[2]), paste0(breaks[2:(brk_length-1)] + precision, divider, breaks[3:brk_length]))
+    label_list <- switch(format_notation,
+                         'precision' = label_notation_precision(breaks, brk_length, precision = precision, divider = divider, left.open = left.open, rightmost.closed = rightmost.closed),
+                         'brackets' = label_notation_brackets(breaks, brk_length, divider = divider, left.open = left.open, rightmost.closed = rightmost.closed),
+                         'signs' = label_notation_signs(breaks, brk_length, divider = divider, left.open = left.open, rightmost.closed = rightmost.closed))
 
-    } else if(left.open && !rightmost.closed) { #FF
-      upper_sym <- '>'
-      lower_sym <- '<='
-      middle_labels <- c(paste0(breaks[1], divider, breaks[2]), paste0(breaks[2:(brk_length-1)] + precision, divider, breaks[3:brk_length]))
-    } else if(!left.open && rightmost.closed) { #TF
-      upper_sym <- '>'
-      lower_sym <- '<'
+    upper_sym <- label_list$upper_sym
+    lower_sym <- label_list$lower_sym
+    middle_labels <- label_list$middle_labels
+    rm(label_list)
 
-      lb <- breaks[1:(brk_length-2)]
-      ub <- breaks[2:(brk_length-1)] - precision
-      index <- purrr::map2_lgl(lb, ub, ~`==`(.x,.y))
-      middle_labels <- character(length(index)+1) # +1 for the top bracket that is inclusive
-      middle_labels[which(index)] <- paste0(lb[index])
-      middle_labels[which(!index)] <- paste0(lb[!index], divider, ub[!index])
-      middle_labels[length(index)+1] <- paste0(breaks[(brk_length-1)], divider, breaks[(brk_length)])
-
-    } else if(all(!left.open, !rightmost.closed)) { #FT
-      upper_sym <- '>='
-      lower_sym <- '<'
-
-      lb <- breaks[1:(brk_length-1)]
-      ub <- breaks[2:(brk_length)] - precision
-      index <-  purrr::map2_lgl(lb, ub, ~`==`(.x,.y))
-      middle_labels <- character(length(index)) # All the middle labels get changed as top not inclusive
-      middle_labels[which(index)] <- paste0(lb[index])
-      middle_labels[which(!index)] <- paste0(lb[!index], divider, ub[!index])
-    }
   } else { #TODO add more helpful autolabelling when only 2 breaks provided
+    if(format_notation != 'precision') warning('Bracket and sign notation not supported when 2 or less break points')
     upper_sym <- '>'
     lower_sym <- '<'
     middle_labels <- paste0(breaks[1:brk_length-1], divider, breaks[2:brk_length])
@@ -341,7 +508,7 @@ create_breaks <- function(x, breaks, format = FALSE, precision, divider = '-', l
     }
 
     levels_out <- seq(min(out, na.rm = TRUE), max(out, na.rm = TRUE))
-    corrected_lbl_length <- brk_labels[min(out, na.rm = TRUE):max(length(levels_out), max(out, na.rm = TRUE))]
+    corrected_lbl_length <- brk_labels[min(out, na.rm = TRUE):max(length(levels_out), max(out, na.rm = TRUE))] # To ensure they align to labels
 
     out <- factor(out, levels = levels_out, labels = corrected_lbl_length)
 
