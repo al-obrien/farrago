@@ -353,7 +353,7 @@ identify_overlap <- function(data, grp_id, date_start, date_end, preserve_id = F
   data.table::setorderv(data, c(deparse(grp_id), deparse(date_start), deparse(date_end)))
 
   # Create groupings for overlaps
-  out <- data[, .(grp_col = c(0, cumsum(as.numeric(shift(eval(date_start), type = 'lead')) > cummax(as.numeric(eval(date_end))))[-.N])),
+  out <- data[, .(grp_col = c(0, cumsum(as.numeric(data.table::shift(eval(date_start), type = 'lead')) > cummax(as.numeric(eval(date_end))))[-.N])),
               by = eval(grp_id)]
 
   # An issue can occur when there are NA values in end date prior to the final row... perhaps exclude?
