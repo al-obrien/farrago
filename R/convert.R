@@ -326,7 +326,7 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 35, return_values, split_wk53 = TRUE, sunday_start = TRUE){
 
   valid_returns <- c('week', 'month', 'year', 'season')
-  if(!missing(return_values)) match.arg(return_values, valid_returns)
+  if(!missing(return_values)) match.arg(return_values, valid_returns, several.ok = TRUE)
 
   # Run through parsing check for YYYY-MM-DD formats
   date <- lubridate::as_date(date, format = format)
