@@ -625,7 +625,7 @@ load_from_sas <- function(datalist,
                           sas_path = "C:/Program Files/SASHome/SASFoundation/9.4/sas.exe",
                           config_file = NULL,
                           add_library = "",
-                          add_sas_code = "",
+                          add_code = "",
                           convert2csv = FALSE,
                           keep_attr = FALSE) {
   message(
@@ -828,7 +828,7 @@ load_excel_sheets <- function(filename, tibble = FALSE, ...) {
 #'
 #' @param file_location Location of target file to load (any file compatible with \code{fread}).
 #' @param filter_col Target column to perform filtering operation.
-#' @param filter_v Vector of values to perform filtering on (categorical by default via %in%).
+#' @param filter_v Vector of values to perform filtering on (categorical by default via 'in' operator).
 #' @param chunk_function A custom function to perform instead of the default behaviour of filtering on a single column.
 #' @param chunk_size Size of each chunk to perform operations (default: 1e6L).
 #' @param ... Additional parameters to pass to \code{\link[datatable]{fread}}.
@@ -913,7 +913,7 @@ fread_chunked <- function(file_location, filter_col, filter_v, chunk_function = 
 #'
 #' @param file_location Location of target file to load (any file compatible with \code{\link[iotools]{dstrsplit}} and provided \code{delim} parameter).
 #' @param filter_col Target column to perform filtering operation.
-#' @param filter_v Vector of values to perform filtering on (categorical by default via %in%).
+#' @param filter_v Vector of values to perform filtering on (categorical by default via 'in' operator).
 #' @param col_types A vector of values that specifies all of the column types in the file of interest, this is an \code{iotools} requirement.
 #' @param chunk_function A custom function to perform instead of the default behaviour of filtering on a single column.
 #' @param chunk_size Size of each chunk to perform operations (default: 1e6L).
@@ -973,5 +973,117 @@ read_chunked <- function(file_location, filter_col, filter_v, col_types, chunk_f
                                           CH.MERGE = match.fun(rbind_method),
                                           parallel = parallel)
   return(output_combined)
+}
+
+
+#' Quickly create and write to a SQLite database
+#'
+#' \code{write2sqlite} is a light wrapper function around various \code{RSQLite} and \code{DBI} functions to make it easier to
+#' quickly create a database, tables, and append to existing tables.
+#'
+#' This function requires some of the more recent features of SQLite, including 'extended types' and date formatting capabilities.
+#' To ensure date formatting is preserved, \code{write2sqlite} checks column types for the table being added. Using this function also
+#' controls the connection open/closing automatically (given the provided DB name).
+#'
+#' An optional logging feature is also available. This creates a column called 'log_book' and will track when a table was updated.
+#'
+#' @param db_name Database name (either path to existing, or name of new database (e.g. name.sqlite, name.db)).
+#' @param data Dataset to add to database.
+#' @param tbl_name Name to assign to table associated with the provided data.
+#' @param extended_types RSQLite parameter for additional data types such as dates (default: \code{TRUE}),
+#' @param date2text Detect which columns are dates and parse them to characters (instead of numeric) to store in SQLite (default: \code{TRUE}),
+#' @param logging Boolean, determines if logging table named 'log_book' is used in the writing operation (default: \code{FALSE}),
+#' @param ... Additional parameters to be passed to \code{\link[DBI]{dbWriteTable}}.
+#'
+#' @examples
+#' \dontrun{
+#' # Use an existing dataset to add data
+#' write2sqlite('path/to/my/dbfile.sqlite', mtcars, 'boringcars')
+#'
+#' # Replace an existing dataset
+#' newmtcars <- mtcars[1:10]
+#' write2sqlite('path/to/my/dbfile.sqlite', newmtcars, 'boringcars', overwrite = TRUE)
+#'
+#' # Create a new DB and add first table in one swoop
+#' write2sqlite('mydb.sqlite', newmtcars, 'firsttable')
+#' }
+#' @seealso read_sqlite
+#' @export
+write2sqlite <- function(db_name, data, tbl_name, extended_types = TRUE, date2text = TRUE, logging = FALSE, ...) {
+
+  db_con <- DBI::dbConnect(RSQLite::SQLite(), db_name, extended_types = extended_types)
+
+  if(date2text) {
+    # Detect date fields, preferably in ISO standard, and pass as character with DATE field.types to SQLite
+    date_loc <- vapply(data, FUN = function(x) inherits(x, 'Date'), FUN.VALUE = logical(1))
+    date_loc <- names(date_loc[date_loc])
+    lngth <- length(date_loc)
+    datev <- setNames(rep('DATE', lngth), date_loc)
+
+    if(length(date_loc > 0 )) {
+      data <- AHRtools::convert_format(data, as.character, date_loc)
+      DBI::dbWriteTable(db_con, tbl_name, data,  field.types = datev, ...)
+    } else DBI::dbWriteTable(db_con, tbl_name, data, ...)
+
+  } else {
+    DBI::dbWriteTable(db_con, tbl_name, data, ...)
+  }
+
+  if(logging) {write_sql_log(db_name, message = glue::glue('Table written: {tbl_name}'), extended_types)}
+
+  on.exit({DBI::dbDisconnect(db_con)}, add = TRUE)
+}
+
+
+#' Quickly query a SQLite database
+#'
+#' Access a SQLite file and pass a standard query. This function deals with all the {DBI} work and will open/close the connection
+#' automatically. If you need to perform multiple operations it is advised to work with {DBI} directly.
+#'
+#' @param db_name Database name (full or relative path must be part of the name).
+#' @param query Character vector containing the SQL query.
+#' @param extended_types RSQLite parameter for additional data types such as dates (default: \code{TRUE})
+#' @param ... Additional parameters to be passed to \code{\link[DBI]{dbGetQuery}}.
+#'
+#' @examples
+#' \dontrun{
+#' # Create a new DB and add first table in one swoop
+#' write2sqlite('mydb.sqlite', mtcars, 'firsttable')
+#'
+#' read_sqlite('mydb.sqlite', "SELECT * FROM firsttable")
+#' read_sqlite('mydb.sqlite', "SELECT gear, count(*) AS N FROM firsttable GROUP BY gear")
+#' }
+#' @seealso write2sqlite
+#' @export
+read_sqlite <- function(db_name, query, extended_types = TRUE, ...) {
+
+  tmp_con <- DBI::dbConnect(RSQLite::SQLite(), db_name, extended_types = extended_types)
+
+  output <- DBI::dbGetQuery(tmp_con, query, ...)
+
+  on.exit({DBI::dbDisconnect(tmp_con)}, add = TRUE)
+
+  return(output)
+}
+
+#' Write to logging column in SQLite
+#'
+#' Used internally by write2sqlite
+#'
+#' @param db_name Database name (full or relative path must be part of the name).
+#' @param message Logging message to write to log_book table.
+#' @param extended_types RSQLite parameter for additional data types such as dates (default: \code{TRUE})
+#' @param ... Additional parameters to be passed to \code{\link[DBI]{dbWriteTable}}.
+#'
+write_sql_log <- function(db_name, message = NA_character_, extended_types = TRUE,  ...) {
+
+  tmp_con_log <- DBI::dbConnect(RSQLite::SQLite(), db_name, extended_types = extended_types)
+
+  content <- data.frame(CRT_TIME = Sys.time(), CRT_DT = Sys.Date(), MESSAGE = message)
+
+  DBI::dbWriteTable(tmp_con_log, 'log_book', content, append = TRUE, ...)
+
+  on.exit({DBI::dbDisconnect(tmp_con_log)}, add = TRUE)
+
 }
 
