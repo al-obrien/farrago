@@ -193,6 +193,127 @@ transfer_winscp <- function(file = NULL, direction = NULL, connection = NULL, rm
 }
 
 
+#' Check for contents on server via cURL
+#'
+#' \code{check_curl} will connect to a server, typically a (secure) file transfer protocol available with cURL and check for the presence of a file
+#' with the provided pattern, if any.
+#'
+#' This function is used in conjunction with the \code{\link{transfer_curl}} function and can detect if the file of interest is actually available for download.
+#' \code{check_curl} is a thin wrapper around \code{curl} functionality; more specifically, the core process uses \code{\link[curl]{curl_fetch_memory}}. cURL requires
+#' a 'handle' to be specified, which as the name suggests, specifies how cURL will 'handle' the server request. Details such as username, password, verbose can be specified
+#' in the handle. See the examples for some common patterns.
+#'
+#' @param connection Character string that is used to connect to the desired file system (ensure ends with a /).
+#' @param handle_options List of names elements for the cURL handle (for sftp connections, typically username and password are provided).
+#' @param pattern Character string, typically a file name or portion thereof, that will be used in the search. Default is today's date.
+#' @param detailed_output Logical value to return the entire file list at remote location; default is \code{FALSE}.
+#' @return A logical value of whether or not the pattern was found. If detailed_output, the entire list of files in target folder.
+#' @seealso \code{\link{transfer_curl}}, \code{\link{check_winscp}, \code{\link{transfer_winscp}
+#' @examples
+#' \dontrun{
+#' # Test to see if the pattern is present in the server.
+#' check_curl(pattern = 'June_22_2020', connection = 'YOUR(S)FTPURL', detailed_output = TRUE)
+#' check_curl(connection = 'YOUR(S)FTPURLPATH',
+#'            handle_options = list(username = 'myuid', password = 'mypwd', verbose = TRUE),
+#'            detailed_output = TRUE)
+#' }
+#' @export
+check_curl <- function(connection = NULL, handle_options = list(), pattern = NULL, detailed_output = FALSE){
+
+  # Error if no connection
+  if(is.null(connection)) stop('No connection value was provided.');
+
+  # Default pattern
+  if(is.null(pattern)) {if(!detailed_output) warning('No pattern input, default used'); pattern <- format(lubridate::today(), "%B_%d_%Y");}
+
+  # Create handle
+  hdl <- curl::new_handle()
+  curl::handle_setopt(handle = hdl, .list = handle_options)
+
+  # Grab, parse, and split content
+  tmp <- rawToChar(curl::curl_fetch_memory(connection, hdl)$content)
+  filelist <- strsplit(tmp,"\n", fixed = T)[[1]]
+
+  # If want just the list, return before logical checks
+  if(detailed_output) return(filelist);
+
+  # If checking against a pattern
+  check_pattern <- any(stringr::str_detect(filelist, pattern))
+  if(check_pattern) {
+    print(paste('Happy days! The pattern (', pattern , ') input has been detected in',
+                stringr::str_replace(connection, '(.*@)(.*)', '\\2')))
+  } else {
+    print('No pattern was found')
+  }
+  return(check_pattern)
+}
+
+
+#' Transfer content between file systems via cURL
+#'
+#' \code{transfer_curl} will connect to the (secure) file transfer protocol available with cURL and transfer (upload or download)
+#' a specific file of interest.
+#'
+#' \code{transfer_curl} is a thin wrapper around \code{curl} functionality; more specifically, the core process uses \code{\link[curl]{curl_download}} and
+#' \code{\link[curl]{curl_upload}}. cURL requires a 'handle' to be specified, which as the name suggests, specifies how cURL will 'handle' the server
+#' request. Details such as username, password, verbose can be specified in the handle. See the examples for some common patterns. A possible limitation is
+#' the transfer speed of this process. The default transfer speed as controlled through \href{https://curl.se/libcurl/c/curl_easy_setopt.html}{URL options}; if you have
+#' over several MBs to transfer, try adjusting the \code{buffersize}, \code{upload_buffersize}, \code{max_recv_speed_large}, and \code{max_send_speed_large} options passed
+#' to the \code{handle_options} parameter. Use \code{\link[curl]{curl_options}} to see what options are available, if some are expected but not found, consider upgrading cURL.
+#'
+#' @param file Character string. When uploading, should be the file path and name, when downloading it should just be the file name and extension.
+#' @param direction Character string, either 'upload' or 'download'.
+#' @param connection Character string that is used to connect to the desired file system.
+#' @param handle_options List of names elements for the cURL handle (for sftp connections, typically username and password are provided).
+#' @param drop_location Character string that provides the path to place the downloaded file from winSCP.
+#' @return Dataset will be saved in the file system.
+#' @seealso \code{\link{check_curl}}, \code{\link{check_winscp}, \code{\link{transfer_winscp}
+#' @examples
+#' \dontrun{
+#' # Download a file
+#' transfer_curl(file ='filename_in_remote_location.xlsx',
+#'               direction = 'download',
+#'               connection = 'YOUR(S)FTPURL',
+#'               handle_options = list(username = 'myuid', password = 'mypwd'),
+#'               drop_location = '/PATH/TO/DESIRED/FOLDER')
+#'
+#' # Upload a file
+#' transfer_curl(file = '/LOCATION/OF/FILE/UPLOAD.csv,
+#'               direction = 'upload',
+#'               connection = 'YOUR(S)FTPURL/FOLDER',
+#'               handle_options = list(username = 'myuid', password = 'mypwd'))
+#' }
+#' @export
+transfer_curl <- function(file = NULL, direction = NULL, connection = NULL, handle_options = list(), drop_location = NULL) {
+
+  # Parameter checks
+  if (is.null(direction) || !(direction %in% c("upload", "download"))) stop("Invalid direction input, use 'upload' or 'download' keywords")
+  if (is.null(file)) stop("Please provide a file to upload or download")
+  if (is.null(connection)) stop("No connection (URL) value was provided. Username and password can be provided under handle_options.")
+  if (is.null(drop_location) && direction == "download") stop("Drop location must be provided for downloading.")
+
+  if(direction == "download"){
+
+    # Create handle
+    hdl <- curl::new_handle()
+    curl::handle_setopt(handle = hdl, .list = handle_options)
+
+    # Create URL
+    urlfile <- file.path(connection, file)
+    dropfile <- file.path(drop_location, file)
+
+    # Download file
+    curl::curl_download(urlfile, destfile = dropfile, handle = hdl)
+
+  } else if (direction == "upload") {
+
+    # Create URL
+    urlfile <- file.path(connection, basename(file))
+    upload_object <- do.call(curl::curl_upload, c(file = file, url = urlfile, handle_options)) # Not returned as other details already provided...
+  }
+}
+
+
 #' Find (n-latest) file
 #'
 #' Find particular file within a directory and return its name/path.
