@@ -287,7 +287,7 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 #' @param format Character vector following \code{\link[base]{strptime}}; defaults to \code{"\%Y-\%m-\%d"}.
 #' @param flu_wk_start Week of the year that flu season begins, all entries prior to that week will be in prior season; default set to 35.
 #' @param return_values Character vector of which values to return, default is set to all ('week', 'month', 'year', 'season').
-#' @param split_wk53 Boolean value to determine if week 53 values are split based upon isoweek (Sunday start).
+#' @param split_wk53 Boolean value to determine if week 53 values are split based upon which month (Dec or Jan) the day lands.
 #' @param sunday_start Boolean value to determine if the start of a week is a Sunday. If set to \code{FALSE}, Monday is the start of the week.
 #' @return List containing vectors of week, month, year, and season related to provided dates.
 #'
