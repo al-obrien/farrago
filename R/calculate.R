@@ -676,3 +676,68 @@ calculate_coalesce_origin <- function(data, cols) {
 
   return(col_name)
 }
+
+
+#' Calculate the min/max distance among vector values
+#'
+#' \code{calculate_minmax_pairwise} will, as the name suggests, calculate the pairwise differences among a provided vector and determine either
+#' the maximum or minimum distance among the combinations. By default, any group with the min/max value are returned in columns and the index pair
+#' provided on each row. If you only care about the first  match or group, the returned data can be subset with various parameters. The typical use-case
+#' for this function could be to determine which dates among several sources, are closest in alignment; for instance, if some date of births are discrepant
+#' between various data systems, it may be useful to determine which pair are closest to take as the 'true' value. For more complex record validation,
+#' there are entire R packages dedicated to this topic that have better a coverage of tools.
+#'
+#' The core calculation being performed is via \code{outer()}, which is very useful for inner-product operations. This (helper) function simply provides some
+#' additional formatting to find the index at which the max and min differences occured in that original vector.
+#'
+#' @param x Vector of numeric type (e.g. numeric, integer, date).
+#' @param method Either 'min' or max' (provide unquoted).
+#' @param only_distance Return just the min or max distance discovered (default, \code{FALSE}).
+#' @param first_group Return just the first group that matched the min/max distance (default, \code{FALSE}).
+#' @param first_index Return just the first index of the pairwise matches (default, \code{FALSE}).
+#' @param ... Additional parameters passed to \code{method}, for min and max functions.
+#' @return Index values from the provided vector that have the min/max distance.
+#' @examples
+#' \dontrun{
+#' # Create long formatted test data, as if dates came from different data sources
+#' test_data <- data.frame(ID = c(1,1,1,2,2,3,3,3,3),
+#'                         dob_type = c('source1', 'source2', 'source3', 'source1', 'source2', 'source1', 'source2', 'source3', 'source4'), # Various sources
+#'                         dob = c(100,101,9999,22,222,100,1000,900,901))
+#'
+#' # Find the matrix for each ID
+#' lapply(split(test_data$dob, f = factor(test_data$ID)), calculate_minmax_pairwise)
+#' lapply(split(test_data$dob, f = factor(test_data$ID)), calculate_minmax_pairwise, first_index = TRUE, first_group = TRUE)
+#'
+#' # Return as a vector only for max/min distances found by ID (base R)
+#' vapply(split(test_data$dob, f = factor(test_data$ID)), calculate_minmax_pairwise, only_distance = TRUE, FUN.VALUE = numeric(1), USE.NAMES = FALSE)
+#'
+#' # Use with dplyr
+#' library(dplyr)
+#' library(magrittr)
+#' test_data %>%
+#'    group_by(ID) %>%
+#'    mutate(newdate = dob[calculate_minmax_pairwise(dob, first_group = TRUE, first_index = TRUE)])
+#' }
+#' @export
+calculate_minmax_pairwise <- function(x, method = min, only_distance = FALSE, first_group = FALSE, first_index = FALSE, ...) {
+  stopifnot(deparse(substitute(method)) %in% c('min', 'max'))
+
+  tmp <- abs(outer(x, x, `-`))
+
+  # Negate self compare and direction
+  diag(tmp) <- Inf
+  tmp[upper.tri(tmp)] <- Inf
+
+  # Use lower tri (not INF) to find min or max
+  distval <- method(tmp[lower.tri(tmp)], ...)
+  ind <- which(tmp == distval, arr.ind = TRUE, useNames = FALSE)
+  rownames(ind) <- paste0('group', 1:nrow(ind))
+  colnames(ind) <- paste0('index', 1:ncol(ind))
+  ind <- t(ind) # for easier index slice ordering on out
+
+  if(first_group) ind <- ind[,'group1', drop = FALSE]
+  if(first_index) ind <- ind[match('index1', rownames(ind)), , drop = FALSE] #TODO allow option for min/max of the index pair?
+
+  # Return the max/min distance or the matrix of index they were found
+  if(only_distance) return(distval) else return(ind)
+}
