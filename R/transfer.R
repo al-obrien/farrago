@@ -809,3 +809,169 @@ load_excel_sheets <- function(filename, tibble = FALSE, ...) {
   names(x) <- sheets
   x
 }
+
+
+#' Read files in chunks with \code{datatable::fread()}
+#'
+#' \code{fread_chunked} is a helper function that wraps around \code{\link[datatable]{fread}} to allow chunk-wise operations on data as it loads.
+#' By itself \code{fread} can load delimited files extremely fast; however, it does not have extensive nor easy-to-use capabilities to perform operations
+#' while the data streams into R.
+#'
+#' This function by default will filter data based upon a provided column ID and filtering vector. However, a custom function can also be provided for more
+#' flexible operations to be performed on each chunk. The common use-case is while working with extremely large data, where the entire dataset would never fit into the available computer memory.
+#' When datasets contains much more information than needed for a particular analysis the chunk-wise filtering will ensure data loaded is reduced to the filtering criteria required without, hopefully,
+#' hitting RAM limits.
+#'
+#' There are several options to perform chunk reading in R. In addition to this function, you could also
+#' explore the package {chunked} and \code{readr::read_csv_chunked()}. However, at some point, it may be
+#' more suitable to simply have the data stored in a database for more efficient operations outside of R.
+#'
+#' @param file_location Location of target file to load (any file compatible with \code{fread}).
+#' @param filter_col Target column to perform filtering operation.
+#' @param filter_v Vector of values to perform filtering on (categorical by default via %in%).
+#' @param chunk_function A custom function to perform instead of the default behaviour of filtering on a single column.
+#' @param chunk_size Size of each chunk to perform operations (default: 1e6L).
+#' @param ... Additional parameters to pass to \code{\link[datatable]{fread}}.
+#'
+#' @return Datatable (passed through the chunk-wise function)
+#' @seealso read_chunked
+#' @examples
+#' \dontrun{
+#' file_of_interest <- '/path/to/file/myfile.csv'
+#'
+#' # Filter based upon an ID column or similar
+#' ids_of_interest <- c(1, 2, 3)
+#' chunk_loaded_file <- fread_chunked(file_of_interest, filter_col = recordID, filter_v = ids_of_interest)
+#'
+#' # Example of custom provided function
+#' # ... perform chunked load an filter if ID is in any of several columns
+#' custom_chunk_f <- function(chunk) {
+#'   chunk[chunk[, Reduce(`|`, lapply(.SD, `%in%`, filter_v)),
+#'                 .SDcols = c('recordID1', 'recordID2', 'recordID3', 'recordID4', 'recordID5')]]
+#'                 }
+#'  chunk_loaded_file <- fread_chunked(file_of_interest, filter_v = ids_of_interest, chunk_function = custom_chunk_f)
+#' }
+#' @export
+fread_chunked <- function(file_location, filter_col, filter_v, chunk_function = NULL, chunk_size = 1e6L, ...) {
+
+  # Chunking prep
+  num_rows <- nrow(data.table::fread(file_location, select = 1L))
+  chunk_colnames <- colnames(data.table::fread(file_location, nrow = 1L))
+  chunk_length <- seq_along(1:ceiling(num_rows / chunk_size))
+
+  if(is.null(chunk_function)) {
+    filter_col <- substitute(filter_col)
+    default_chunk_function <- function(i) {
+      tmp <- data.table::fread(file_location,
+                               data.table = TRUE,
+                               col.names = chunk_colnames,
+                               skip = chunk_size * i,
+                               nrow = chunk_size,
+                               ...)
+      tmp[eval(filter_col) %in% filter_v]
+    }
+
+    chunk_list <- lapply(chunk_length - 1, default_chunk_function)
+    output_combined <- data.table::rbindlist(chunk_list)
+    rm(tmp, chunk_list)
+
+  } else {
+    # Ensure provided chunk function can borrow the parameters from the surrounding call
+    environment(chunk_function) <- environment()
+
+    # Provide custom function within the fread pulls that are chunked...
+    custom_chunk_function <- function(i) {
+      tmp <- data.table::fread(file_location,
+                               data.table = TRUE,
+                               col.names = chunk_colnames,
+                               skip = chunk_size * i,
+                               nrow = chunk_size,
+                               ...)
+      chunk_function(tmp)
+    }
+    chunk_list <- lapply(chunk_length - 1, custom_chunk_function)
+    output_combined <- data.table::rbindlist(chunk_list)
+  }
+  return(output_combined)
+}
+
+#' Read files in chunks with \code{iotools::chunk.apply()}
+#'
+#' \code{read_chunked} is a helper function that wraps around \code{\link[iotools]{chunk.apply}} to allow chunk-wise operations on data as it loads.
+#' This is very similar to \code{\link{fread_chunked}}, though will perform much faster as it can run the chunks in parallel if desired. The drawback is it can be
+#' a bit tricky to set up as it requires column type assignment.
+#'
+#' This function by default will filter data based upon a provided column ID and filtering vector. However, a custom function can also be provided for more
+#' flexible operations to be performed on each chunk. The common use-case is while working with extremely large data, where the entire dataset would never fit
+#' into the available computer memory. When datasets contains much more information than needed for a particular analysis the chunk-wise filtering will ensure
+#' data loaded is reduced to the filtering criteria required without, hopefully, hitting RAM limits. Providing column types for each column is important, assuming
+#' them all as character may lead to errors and column length mismatches (causing the load to fail, e.g. \code{too many input columns}).
+#'
+#' There are several options to perform chunk reading in R. In addition to this function, you could also
+#' explore the package {chunked} and \code{readr::read_csv_chunked()}. However, at some point, it may be
+#' more suitable to simply have the data stored in a database for more efficient operations outside of R.
+#'
+#' @param file_location Location of target file to load (any file compatible with \code{\link[iotools]{dstrsplit}} and provided \code{delim} parameter).
+#' @param filter_col Target column to perform filtering operation.
+#' @param filter_v Vector of values to perform filtering on (categorical by default via %in%).
+#' @param col_types A vector of values that specifies all of the column types in the file of interest, this is an \code{iotools} requirement.
+#' @param chunk_function A custom function to perform instead of the default behaviour of filtering on a single column.
+#' @param chunk_size Size of each chunk to perform operations (default: 1e6L).
+#' @param rbind_method Function to perform the appending of chunks (default: \code{\link[base]{rbind}}).
+#' @param delim The delimiter type in the file of interest (default: ',').
+#' @param parallel How many processes should be used in loading (default: 1).
+#' @return Dataframe (passed through the chunk-wise function)
+#'
+#' @examples
+#' \dontrun{
+#' file_of_interest <- '/path/to/file/myfile.csv'
+#'
+#' # Predetermined column types of large complex file (may require manual review!)
+#' file_coltypes <- c(rep('integer', 5), # First 5 are integer
+#                     rep('character', 10), # Following 10 are character
+#                     rep(c(rep('character',4), rep('integer',2)), 18))
+#'
+#' # Filter based upon an ID column or similar
+#' ids_of_interest <- c(1, 2, 3)
+#' chunk_loaded_file <- read_chunked(file_of_interest, filter_col = recordID, filter_v = ids_of_interest)
+#'
+#' # Example of custom provided function
+#' # ... perform chunked load an filter if ID is in any of several columns
+#' custom_chunk_f <- function(chunk) {
+#'   data.table::setDT(chunk) # Set as data.table for speed of custom function...
+#'   chunk[chunk[, Reduce(`|`, lapply(.SD, `%in%`, filter_v)),
+#'                 .SDcols = c('recordID1', 'recordID2', 'recordID3', 'recordID4', 'recordID5')]]
+#'                 }
+#'  chunk_loaded_file <- read_chunked(file_of_interest, filter_v = ids_of_interest, col_types = file_coltypes,
+#'                                    chunk_function = custom_chunk_f, rbind_method = data.table::rbindlist, parallel = 2)
+#' }
+#' @seealso fread_chunked
+#' @export
+read_chunked <- function(file_location, filter_col, filter_v, col_types, chunk_function = NULL, chunk_size = 1e6L, rbind_method = rbind, delim = ',', parallel = 1) {
+
+  # Fetch all the column names
+  chunk_colnames <- colnames(data.table::fread(file_location, nrow = 1L))
+
+  # If no custom function provided, default to filter by 1 col...
+  if(is.null(chunk_function)) {
+    filter_col <- substitute(filter_col)
+    chunk_function <- function(chunk) {
+      subset(chunk, subset = eval(filter_col) %in% filter_v)
+    }
+  } else {
+    # Assign function to its own env to ensure it can be found and operate
+    environment(chunk_function) <- environment()
+  }
+
+  output_combined <- iotools::chunk.apply(file_location,
+                                          function(chunk) {
+                                            tmp_chunk <- iotools::dstrsplit(chunk, col_types = col_types, sep = delim)
+                                            colnames(tmp_chunk) <- chunk_colnames
+                                            chunk_function(tmp_chunk)
+                                          },
+                                          CH.MAX.SIZE = chunk_size,
+                                          CH.MERGE = match.fun(rbind_method),
+                                          parallel = parallel)
+  return(output_combined)
+}
+
