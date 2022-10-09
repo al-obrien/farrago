@@ -12,6 +12,7 @@ create_breaks(
   divider = "-",
   left.open = FALSE,
   rightmost.closed = FALSE,
+  format_notation = "precision",
   ...
 )
 }
@@ -22,13 +23,13 @@ create_breaks(
 
 \item{format}{Provide your own labels; if set to \code{TRUE} the clean labeling will be set automatically.}
 
-\item{precision}{Numeric value, determines how to adjust boundary of labels. Default will determine from provided breaks.}
+\item{precision}{Numeric value, determines how to adjust boundary of labels. Default will determine from provided breaks (e.g. 1 decimal place means precision of 0.1).}
 
 \item{divider}{Character defining the symbol separating adjacent label values (default is a dash).}
 
-\item{left.open}{Logical; passed to \code{\link{findInterval}}.}
-
 \item{rightmost.closed}{Logical; passed to \code{\link{findInterval}}.}
+
+\item{format_notation}{Character vector to determine label style; valid inputs include 'precision', 'brackets', or 'signs' (only the first uses the precision parameter).}
 
 \item{...}{Additional parameters supplied to \code{\link{findInterval}}}
 }
@@ -43,9 +44,12 @@ For edge cases, ensure that labeling is suitable. For example, if you do not wan
 values sent to \code{findInterval} via \code{...}. When providing custom labels to the \code{format} parameter ensure you have compensated for a label that
 may sit outside the typical boundary of your provided breaks (e.g. <0 if you lowest break is 0 but your data can take on negative values).
 If this function is not providing what you require, try looking at \code{\link{cut}}. If you need the ability to automatically cut groups into defined sizes
-look at the \code{{classInt}} or provide \code{\link{cut}} a single value for the number of equal breaks to create.
+look at the \code{{classInt}} or provide \code{\link{cut}} a single value for the number of equal breaks to create. \code{create_breaks} also has a formatting
+option to use bracket notation for the middle bounds, this may be preferred if the default automatic formatting with assigned precision is not to one's liking.
 
-Adjusting the \code{precision} affects the rounding percision of the labels. By default it will use the smallest decimal place in the parameter \code{brks}
+Adjusting the \code{precision} affects the rounding precision of the labels. By default it will use the smallest decimal place in the parameter \code{brks}.
+Depending on use-case, it may be important to ensure your binning is occurring as expected (e.g. that partial ages like 5.4 yo bins in 4-5 or 5-6). Rounding prior to
+using this function may help avoid such issues.
 }
 \examples{
 
@@ -54,16 +58,39 @@ data = c(-1,0,10,5,999,9)
 breaks = c(0, 1, 10,50,100)
 labels = c('<0', '0-1', '1-10', '10-50', '50-100', '100+')
 
-#If many break labels, try using rep() or seq(), and paste them in
+#If many break labels, try using rep() or seq(), and paste them in interation
 labels2 = purrr::map2_chr(seq(10, 99, 10),  seq(20, 100, 10)-1, ~paste0(.x, '-', .y))
 
 # Create break without any formatting
 breaks_numeric <- create_breaks(data, breaks)
 
 # Create break with default label formatting
-breaks_auto <- create_breaks(data, breaks, TRUE)
+breaks_auto <- create_breaks(data, breaks, format = TRUE)
 
 # Create break with custom label formatting
-breaks_custom <- create_breaks(data, breaks, labels)
+breaks_custom <- create_breaks(data, breaks, format = labels)
 
+# Create breaks without any precision (will see start/end of categories as same number)
+create_breaks(data, breaks, format = labels, precision = 0)
+
+# Cut function as alternative
+cut(data, breaks)
+
+# Cut function fills NA if you dont define -Inf and +Inf in the breaks
+# ... also has less auto-formatting abilities (index only, bracket notation or custom)
+cut(data, c(-Inf, 0, 1, 10,50,100, Inf))
+cut(data, c(-Inf, 0, 1, 10,50,100, Inf), labels = FALSE) # Only index the group, not auto-label
+
+# Compare various outputs
+x <- c(0.4, 0.6, 1:10)
+v <- c(0.5, 5, 7, 9)
+cbind(x,
+TF=as.character(create_breaks(x, v, left.open =T, rightmost.closed = F, format = T,precision = 0)),
+FF=as.character(create_breaks(x, v, left.open =F, rightmost.closed = F, format = T,precision = 0)),
+TT=as.character(create_breaks(x, v, left.open =T, rightmost.closed = T, format = T,precision = 0)),
+FT=as.character(create_breaks(x, v, left.open =F, rightmost.closed = T, format = T,precision = 0)),
+TF2=as.character(create_breaks(x, v, left.open =T, rightmost.closed = F, format = T, format_notation = 'brackets')),
+FF2=as.character(create_breaks(x, v, left.open =F, rightmost.closed = F, format = T, format_notation = 'brackets')),
+TT2=as.character(create_breaks(x, v, left.open =T, rightmost.closed = T, format = T, format_notation = 'brackets')),
+FT2=as.character(create_breaks(x, v, left.open =F, rightmost.closed = T, format = T, format_notation = 'brackets')))
 }

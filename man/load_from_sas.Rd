@@ -9,7 +9,7 @@ load_from_sas(
   sas_path = "C:/Program Files/SASHome/SASFoundation/9.4/sas.exe",
   config_file = NULL,
   add_library = "",
-  add_sas_code = "",
+  add_code = "",
   convert2csv = FALSE,
   keep_attr = FALSE
 )
@@ -23,11 +23,11 @@ load_from_sas(
 
 \item{add_library}{Character string (SAS code) for additional libraries to be mapped (see \code{\link{connect_sas_libraries}}).}
 
+\item{add_code}{Character string (SAS code) for additional data formatting and calculations to perform before loading data.}
+
 \item{convert2csv}{Logical variable (TRUE/FALSE) to indicate if the data exported from SAS should be in csv format.}
 
 \item{keep_attr}{Logical variable (TRUE/FALSE) to indicate if attribute values should be stripped from the output tables upon loading from SAS.}
-
-\item{add_code}{Character string (SAS code) for additional data formatting and calculations to perform before loading data.}
 }
 \value{
 Dataset(s) based upon the input parameters.

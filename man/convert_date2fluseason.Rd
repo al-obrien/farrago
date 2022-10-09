@@ -7,9 +7,10 @@
 convert_date2fluseason(
   date,
   format = "\%Y-\%m-\%d",
-  flu_wk_start = 34,
+  flu_wk_start = 35,
   return_values,
-  split_wk53 = TRUE
+  split_wk53 = TRUE,
+  sunday_start = TRUE
 )
 }
 \arguments{
@@ -17,11 +18,13 @@ convert_date2fluseason(
 
 \item{format}{Character vector following \code{\link[base]{strptime}}; defaults to \code{"\%Y-\%m-\%d"}.}
 
-\item{flu_wk_start}{Week of the year that flu season begins, all entries prior to that week will be in prior season; default set to 34.}
+\item{flu_wk_start}{Week of the year that flu season begins, all entries prior to that week will be in prior season; default set to 35.}
 
 \item{return_values}{Character vector of which values to return, default is set to all ('week', 'month', 'year', 'season').}
 
-\item{split_wk53}{Boolean value to determine if week 53 values are split based upon isoweek (Sunday start).}
+\item{split_wk53}{Boolean value to determine if week 53 values are split based upon which month (Dec or Jan) the day lands.}
+
+\item{sunday_start}{Boolean value to determine if the start of a week is a Sunday. If set to \code{FALSE}, Monday is the start of the week.}
 }
 \value{
 List containing vectors of week, month, year, and season related to provided dates.
@@ -38,10 +41,33 @@ assignment based upon a flu week start date as reference. To improve speed, inde
 Adapted from original with courtesy of M. Ware.
 }
 \examples{
-date_list <- c('2020-08-30', '2020-09-01', '2020-09-23', '2020-01-01', '2019-12-31', '2018-01-01', '2017-01-01', '2016-01-01')
+
+# Basic examples
+date_list <- c('2022-01-01', '2021-01-01', '2020-08-30', '2020-09-01', '2020-09-23', '2020-01-01', '2019-12-31', '2018-01-01', '2017-01-01', '2016-01-01')
 convert_date2fluseason(date_list)
 convert_date2fluseason(date_list, return_values = 'season')
 convert_date2fluseason(date_list, flu_wk_start = 40)
+
+# Detailed example
+library(dplyr)
+library(tidyr)
+
+# Create test data for known cases by season
+test_data <- data.frame(season = c(1, 1, 1, 2, 2),
+                        date = lubridate::ymd(c('2020-06-14', '2020-08-09', '2020-08-16', '2021-08-29', '2021-09-12', '2021-01-01')),
+                        n = c(1,1,1,1, 2))
+
+# Determine the season with the specific date2fluseason function
+test_data$wk <- AHRtools::convert_date2fluseason(test_data$date, return_values = 'week')$week
+test_data$yr <- AHRtools::convert_date2fluseason(test_data$date, return_values = 'year')$year
+
+# To fill empty periods join to full combination of season, year, and week
+test_data <- full_join(test_data, expand(test_data, season, yr, wk = 1:52), by = c('season', 'yr', 'wk'))
+test_data$n <- ifelse(is.na(test_data$n), 0 , test_data$n)
+test_data <-  arrange(test_data, season, wk)
+test_data$date <- if_else(is.na(test_data$date),
+                          ISOweek::ISOweek2date(paste(test_data$yr, paste0('W',test_data$wk), 1, sep = '-')),
+                          test_data$date)
 
 }
 \seealso{
