@@ -741,3 +741,28 @@ calculate_minmax_pairwise <- function(x, method = min, only_distance = FALSE, fi
   # Return the max/min distance or the matrix of index they were found
   if(only_distance) return(distval) else return(ind)
 }
+
+
+#' Calculate the date flu season begins each year
+#'
+#' Assuming flu season starting on Sunday of week 35 each year, providing the year will return the full date this begins.
+#'
+#' @param year Character vector of years to determine flu week start dates (default is current year).
+#' @param flu_wk_start Week of the year that flu season begins (default set to 35).
+#' @param week_start Integer value for start of week (default: 7, Sunday).
+#' @return Vector of dates.
+#' @examples
+#' \dontrun{
+#' # Find start dates for each week...
+#' flu_wk_start(2022); flu_wk_start('2022');
+#' flu_wk_start('2022') + seq(0, 7*10, by =7)
+#  flu_wk_start(c(2020, 2021, 2022))
+#  lapply(flu_wk_start(c(2020, 2021, 2022)), function(x) x + seq(0, 7*10, by =7))
+#' }
+#' @export
+calculate_flu_start <- function(year = format(Sys.Date(), '%Y'), flu_start = 35, week_start = 7) {
+
+  yr_string <- paste0(as.integer(year), '-', flu_start, '-', week_start)
+
+  as.Date(yr_string, '%Y-%U-%u')
+}
