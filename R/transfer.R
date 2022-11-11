@@ -397,7 +397,7 @@ find_file <- function(path, name_pattern, slice_n = NULL, date_filter = NULL, da
 #' @param object Dataset from the R environment; if a list is being stowed, use the 'rds' method.
 #' @param path Character string, location to stow object on hard-drive, default is \code{NULL} and will be placed in a temporary location.
 #' @param new_name Character string that is used to name the temporary file; default is \code{NULL} and uses the object name.
-#' @param method Character string for method of export, either 'rds', 'fst', 'csv'; used to determine the file extension.
+#' @param method Character string for method of export, either 'rds', 'fst', 'qs', 'csv'; used to determine the file extension.
 #' @param compress Logical value; default is \code{TRUE}, will compress the outputs.
 #' @param cleanup  Logical value; default is \code{FALSE}, will remove the object from the provided environment.
 #' @param envir Location from which to export/cleanup the object of interest; default is \code{.GlobalEnv}.
@@ -415,7 +415,7 @@ find_file <- function(path, name_pattern, slice_n = NULL, date_filter = NULL, da
 #' temp_data <- retrieve(stowed_object = temp_data_stowed, cleanup = TRUE)
 #' }
 #' @export
-stow <- function(object, path = NULL, new_name = NULL , method = c('rds', 'fst', 'csv'), compress = TRUE, cleanup = FALSE , envir = .GlobalEnv, ...) {
+stow <- function(object, path = NULL, new_name = NULL , method = c('rds', 'fst', 'qs', 'csv'), compress = TRUE, cleanup = FALSE , envir = .GlobalEnv, ...) {
 
   # Basic checks
   if(is.null(path) & !is.null(new_name)) stop('You must provide a path if you want to rename the output object. The method selected will determine the file type.');
@@ -448,6 +448,7 @@ stow <- function(object, path = NULL, new_name = NULL , method = c('rds', 'fst',
   switch(method,
          rds = {saveRDS(object, paste0(path_out, '.rds'), compress = compress, ...)},
          fst = {fst::write_fst(object, paste0(path_out, '.fst'), ...)},
+         qs = {qs::qsave(object, paste0(path_out, '.qs'), ...)},
          csv = {readr::write_csv(object, paste0(path_out, '.csv'), ...)})
 
   # Create returned object list
@@ -500,6 +501,7 @@ retrieve <- function(stowed_object, keep_name = FALSE, cleanup = FALSE, as.data.
   out <- switch(stowed_object$method,
                 rds = {readRDS(stowed_object$path)},
                 fst = {fst::read_fst(stowed_object$path, as.data.table = as.data.table, ...)},
+                qs = {qs::qread(stowed_object$path, ...)},
                 csv = {readr::read_csv(stowed_object$path, ...)})
 
   if(keep_name){
@@ -520,6 +522,7 @@ retrieve <- function(stowed_object, keep_name = FALSE, cleanup = FALSE, as.data.
 
   return(out)
 }
+
 
 #' Load multiple CSV files from file directories
 #'

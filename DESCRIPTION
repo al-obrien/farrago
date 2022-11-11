@@ -46,6 +46,7 @@ Suggests:
     huxtable,
     iotools,
     readxl,
+    qs,
     RSQLite (>= 2.2.15),
     tables,
     tinytex,
