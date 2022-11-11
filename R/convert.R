@@ -281,7 +281,8 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 #'
 #' The primary purpose of this function is to reassign week 53 dates into week 1 and week 52. It will also provide flu season
 #' assignment based upon a flu week start date as reference. To improve speed, indexing methods are used to assign values instead of
-#' \code{\link{ifelse}} (increased speed by over 5-fold).
+#' \code{\link{ifelse}} (increased speed by over 5-fold). If one needs to convert year-weeks to a full date, it is recommended to use
+#' the ISOweek package (\code{ISOweek2date}). By default, the week split in this function uses ISO standards.
 #'
 #' @param date Character vector in date format of \code{'YYYY-mm-dd'}.
 #' @param format Character vector following \code{\link[base]{strptime}}; defaults to \code{"\%Y-\%m-\%d"}.
@@ -308,7 +309,7 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 #' # Create test data for known cases by season
 #' test_data <- data.frame(season = c(1, 1, 1, 2, 2),
 #'                         date = lubridate::ymd(c('2020-06-14', '2020-08-09', '2020-08-16', '2021-08-29', '2021-09-12', '2021-01-01')),
-#'                         n = c(1,1,1,1, 2))
+#'                         n = c(1,1,1,1,2))
 #'
 #' # Determine the season with the specific date2fluseason function
 #' test_data$wk <- AHRtools::convert_date2fluseason(test_data$date, return_values = 'week')$week
@@ -325,8 +326,8 @@ convert_wk_flu2calendar <- function(week, flu_wk_start = 34) {
 #' @export
 convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 35, return_values, split_wk53 = TRUE, sunday_start = TRUE){
 
-  valid_returns <- c('week', 'month', 'year', 'season')
-  if(!missing(return_values)) match.arg(return_values, valid_returns, several.ok = TRUE)
+  valid_returns <- c('week', 'month', 'year', 'flu_year', 'season')
+  if(!missing(return_values)) match.arg(return_values, valid_returns)
 
   # Run through parsing check for YYYY-MM-DD formats
   date <- lubridate::as_date(date, format = format)
@@ -341,28 +342,30 @@ convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 35,
     # Calculate conditions for weeks and season
     fmt_wk[fmt_wk == 53 & month == 12] <- 52 # Roll back to week 52 if in prior year, Dec
     fmt_wk[fmt_wk == 53 & month == 1] <- 1 # Roll into week 1 if in next year, Jan
-
-    # week <- fmt_wk
-    # index1 <- week_day == 1 & fmt_wk + 1 == 53 & month == 12 # if Sunday, in Dec & just shy of week 53 (will force to 52)
-    # index2 <- !index1 & week_day == 1 # Sunday but not matched to prior index
-    # week[index1] <- 52
-    # week[index2] <- fmt_wk[index2] + 1
   }
+
   week <- fmt_wk
 
-
   year <- year_test
-  index3 <- week==1 & month == 12
-  year[index3] <- year_test[index3]+1
+  index1 <- week==1 & month == 12
+  year[index1] <- year_test[index1]+1
 
   season <- rep(NA, length(fmt_wk))
-  index4 <- fmt_wk < flu_wk_start | (fmt_wk == 52 & month == 1) # Go back a year for season for those in 52 wk but next year month
-  index5 <- !index4 & fmt_wk == 53 & month == 12
-  season[index4] <- paste(year[index4]-1, year[index4], sep="-")
-  season[index5 & is.na(season)] <- paste(year[index5 & is.na(season)]+1, year[index5 & is.na(season)]+2, sep="-")
-  season[!index5 & is.na(season)] <-  paste(year[!index5 & is.na(season)],year[!index5 & is.na(season)]+1, sep="-")
+  index2 <- fmt_wk < flu_wk_start | (fmt_wk == 52 & month == 1) | (fmt_wk == 53 & month == 1) # Go back a year for season for those in 52 wk but next year month
+  season[index2] <- paste(year[index2]-1, year[index2], sep="-")
+  season[!index2 & is.na(season)] <-  paste(year[!index2 & is.na(season)],year[!index2 & is.na(season)]+1, sep="-")
 
-  out <- setNames(list(week, month, year, season),
+  #TODO Add date by floor rounding for the determined flu season week; have to fix the year rollback on 52/53
+  # if(sunday_start) {
+  #   date_week_floor <- as.Date(paste(year, week, 7, sep = '-'), '%Y-%U-%u') # 7 = Sunday
+  # } else {
+  #   date_week_floor <- as.Date(paste(year, week, 1, sep = '-'), '%Y-%U-%u') # 1 = Monday
+  # }
+
+  # Improve by using index2 to speed up
+  flu_year <- gsub(x = season, pattern =  '^([0-9]*)-[0-9]*$', replacement = '\\1')
+
+  out <- setNames(list(week, month, year, flu_year, season),
                   valid_returns)
 
   if(!missing(return_values)) {
