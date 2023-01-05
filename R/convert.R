@@ -382,23 +382,27 @@ convert_date2fluseason <- function(date, format = '%Y-%m-%d', flu_wk_start = 35,
 #'
 #' To create the png file, a LaTeX distribution, and texi2dvi (from base R) are required. It is recommended to use
 #' \code{\link[tinytex]{install_tinytex}}. Various LaTeX packages may be needed, specifically 'tabularx' and 'dvipng' should be
-#' installed using \code{\link[tinytex]{tlmgr_install('dvipng')}}
+#' installed using \code{tinytex::tlmgr_install('dvipng')}
+#'
+#' On some Linux machines, the texi2dvi operation may not work without additional configuration. As such, the parameter \code{texi2dvi} parameter
+#' should be set to \code{emulation}. This has been tested with \code{\link[xtable]{xtable}} but the other interpreters may have additional
+#' dependencies beyond this work-around.
 #'
 #' @param obj A table object (huxtable, xtable, or tables).
 #' @param name Character vector for naming output.
 #' @param rez Integer value for desired resolution (default is 600).
 #' @param interpreter Character vector to define which type of table object was used (huxtable, xtable, or tables).
+#' @param ... Additional parameters passed to \code{\link[tools]{texi2dvi}}.
 #' @return A png file saved to working directory.
 #'
 #' @examples
-#' \dontrun{
 #' convert_table2png(mtcars, 'carsTable', 600, interpreter = 'xtable')
-#' }
+#' convert_table2png(mtcars, 'carsTable', 600, interpreter = 'xtable', texi2dvi = 'emulation')
 #'
 #' @source Inspired/adapted by a post from Michael Yan's blog: \url{http://thinkdatascience.com/}
 #'
 #' @export
-convert_table2png <- function(obj, name, rez = 600, interpreter = "xtable") { # Input the table object, the file name, and resolution of output
+convert_table2png <- function(obj, name, rez = 600, interpreter = "xtable", ...) { # Input the table object, the file name, and resolution of output
   message("This function requires various latex packages to be installed. If it failed, try loading tinytex in R or install MikTex")
   first <- name
   name <- paste(name, ".tex", sep = "") # Will be a tex file
@@ -416,7 +420,7 @@ convert_table2png <- function(obj, name, rez = 600, interpreter = "xtable") { # 
   }
   cat("\n      \\end{document}\n      ")
   sink() # Adds the above code to initially sinked file
-  tools::texi2dvi(file = name)
+  tools::texi2dvi(file = name, ...)
   cmd <- paste("dvipng -T tight", paste(" -D ", rez), shQuote(paste(first, ".dvi", sep = ""))) # Use option -D to adjust resolution
   invisible(system(cmd))
 
