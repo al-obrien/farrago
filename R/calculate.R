@@ -291,12 +291,15 @@ assign_episode <- function(data, grp_id, date, threshold = 1, preserve_id = FALS
 #' an overlap occurs; when \code{TRUE}, the flag will increment. This function does not do the collapse procedure, as that can have nuanced implications with \code{NA} values, but it will provide
 #' the groupings required to do so. It is recommended to have the original data sorted by group and dates so that the returned flag aligns correctly. For performance, this function is written primarily in \code{data.table}.
 #'
+#' A method to find the exact overlapping ranges is to leverage \code{lubridate::interval()} and \code{lubridate::intersect()}
+#'
 #' @param data A data object (tibble, data.frame, data.table).
 #' @param grp_id Unique ID for each member of the cohort (unquoted).
 #' @param date_start Date format (e.g. YYYY-mm-dd) for entry point for record (unquoted).
 #' @param date_end Date format (e.g. YYYY-mm-dd) for exit point for record (unquoted).
 #' @param preserve_id Logical value, if set to \code{TRUE} will output list of original ID to ensure column merges back correctly.
 #' @return An integer vector (ordered by grp_id and dates) or a list containing the original id and collapse id.
+#' @seealso \code{\link{intersect}} \code{interval}
 #' @examples
 #' # Load libraries
 #' library(dplyr); library(data.table); library(lubridate); library(magrittr)
