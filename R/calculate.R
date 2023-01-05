@@ -747,22 +747,47 @@ calculate_minmax_pairwise <- function(x, method = min, only_distance = FALSE, fi
 #'
 #' Assuming flu season starting on Sunday of week 35 each year, providing the year will return the full date this begins.
 #'
+#' For a higher resolution, you can provide a week number to the \code{week} parameter. For example, on week 1 of Jan 2023, it may be desired to
+#' have the 2022 flu year as reference instead of 2023. This avoids some manipulation of inputs using other functions like \code{\link{convert_date2fluseason}}.
+#' However, unlike the \code{year} parameter, this is not currently vectorized and requires \code{mapply} to assist in looping, see examples.
+#'
 #' @param year Character vector of years to determine flu week start dates (default is current year).
+#' @param week Optional parameter for higher resolution of flu week start based on \code{flu_wk_start} parameter.
 #' @param flu_wk_start Week of the year that flu season begins (default set to 35).
 #' @param week_start Integer value for start of week (default: 7, Sunday).
 #' @return Vector of dates.
 #' @examples
 #' \dontrun{
 #' # Find start dates for each week...
-#' flu_wk_start(2022); flu_wk_start('2022');
-#' flu_wk_start('2022') + seq(0, 7*10, by =7)
-#  flu_wk_start(c(2020, 2021, 2022))
-#  lapply(flu_wk_start(c(2020, 2021, 2022)), function(x) x + seq(0, 7*10, by =7))
+#' calculate_flu_start(2022); calculate_flu_start('2022');
+#' calculate_flu_start('2022') + seq(0, 7*10, by =7)
+#' calculate_flu_start(c(2020, 2021, 2022))
+#' lapply(calculate_flu_start(c(2020, 2021, 2022)), function(x) x + seq(0, 7*10, by =7))
+#'
+#' # Using weekly resolution
+#' calculate_flu_start(2022, 34)
+#' mapply(calculate_flu_start, c(2022, 2022), week = c(34,35), SIMPLIFY = FALSE) # As list
+#' do.call('c', mapply(calculate_flu_start, c(2022, 2022), week = c(34,35), SIMPLIFY = FALSE)) # As vector
+#' Reduce('c', mapply(calculate_flu_start, c(2022, 2022), week = c(34,35), SIMPLIFY = FALSE)) # Same as above in effect
 #' }
 #' @export
-calculate_flu_start <- function(year = format(Sys.Date(), '%Y'), flu_start = 35, week_start = 7) {
+calculate_flu_start <- function(year = format(Sys.Date(), '%Y'), week = NA, flu_wk_start = 35L, week_start = 7) {
 
-  yr_string <- paste0(as.integer(year), '-', flu_start, '-', week_start)
+  year <- as.integer(year)
 
+  # Conditional return on week provided if less than flu_wk_start
+  if(!is.na(week)) {
+    stopifnot(as.integer(week) <= 53, as.integer(week) > 0) # Sanity check
+    week <- as.integer(week)
+
+    if(week < flu_wk_start) {
+      yr_string <- paste0(year - 1L, '-', flu_wk_start, '-', week_start)
+      return(as.Date(yr_string, '%Y-%U-%u'))
+    }
+  }
+
+  # Default return if conditional skipped
+  yr_string <- paste0(year, '-', flu_wk_start, '-', week_start)
   as.Date(yr_string, '%Y-%U-%u')
+
 }
