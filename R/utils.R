@@ -334,3 +334,93 @@ find_observedday <- function(year, month, day){
     return(date_c)
   }
 }
+
+
+#' Set .Renviron to point to global RENV cache
+#'
+#' Helper function to create or append the global library cache location for {renv}. Several checks will be performed, which, if \code{prompt} is
+#' set to \code{TRUE} will determine the behavior. First, a search will be performed for an existing .Renviron file. Second, if the environment variable
+#' named 'RENV_PATHS_CACHE' is set, it will ask if any existing key-value pair by this name in an .Renviron file should be removed prior to writing a new entry.
+#' This function can only be used in interactive mode.
+#'
+#' @param cache_loc Location of a (ideally global) cache location for {renv}.
+#' @param work_loc Working environment in which to search, create/append the contents (default: \code{getwd()}).
+#' @param env_var The key name in the .Renviron file, as determined in {renv}, (default \code{RENV_PATHS_CACHE}).
+#' @param prompt Boolean, to determine if process checking occurs or to accept overwriting defaults.
+#' @export
+#' @examples
+#' loc <- 'loc/to/my/global/cache' # Should be known in advance for the team sharing the cache...
+#' set_renv_shared_cache(cache_loc = loc)
+#' set_renv_shared_cache(loc, prompt = FALSE)
+set_renv_shared_cache <- function(cache_loc, work_loc = getwd(), env_var = 'RENV_PATHS_CACHE', prompt = TRUE) {
+
+  if(!interactive()) { stop('Must use this function interactively...') }
+
+  # Prompt to continue if exists (default is TRUE)
+  check_r_environ <- function(work_loc, prompt) {
+    if(!prompt) return(TRUE)
+
+    msg <- paste('Continue [y/n]? ')
+
+    if(file.exists(file.path(work_loc, '.Renviron'))) {
+      cat('.Renviron found under:', work_loc, '\n')
+      resp <- tolower(trimws(readline(msg)))
+    } else {
+      cat(paste0('.Renviron not found under: ', work_loc, ', will create one... \n'))
+      resp <- tolower(trimws(readline(msg)))
+    }
+    return(substring(resp, 1L, 1L) == "y")
+  }
+
+  # Check for existing usage
+  replace_renv_cache <- function(work_loc, env_var, prompt) {
+    dir_loc <- Sys.getenv(env_var)
+    if(dir_loc != '' && dir.exists(dir_loc) && file.exists(file.path(work_loc, '.Renviron'))) {
+
+      # Determine if should prompt...
+      if(prompt) {
+        cat('Existing renv cache variable found...')
+        resp <- tolower(trimws(readline('Replace [y/n]? ')))
+      } else {
+        resp <- 'y'
+      }
+
+      # If 'y' then remove prior rows...
+      if(substring(resp, 1L, 1L) == "y") {
+        tmp_path <- file.path(work_loc, '.Renviron')
+        file_tmp <- readLines(tmp_path)
+        indx <- grep(file_tmp, pattern = paste0(env_var, '\\b'))
+        if(length(indx) > 0) writeLines(file_tmp[-indx], con = tmp_path)
+        return(TRUE) # Exists, correct, continue
+      } else {
+        return(FALSE) # Exist and don't replace, exit
+      }
+    }
+
+    return(TRUE) # Doesn't exist, continue
+
+  }
+
+  # Perform checks and write to file if pass
+  if(check_r_environ(work_loc, prompt)) {
+    renv_check <- replace_renv_cache(work_loc, env_var, prompt)
+    if(renv_check) {
+
+      # Write to new or existing...
+      cat(paste0(env_var, ' = \"', cache_loc, "\"\n"),
+          file = file.path(work_loc, '.Renviron'),
+          append = TRUE)
+
+      # Read renviron (perhaps Sys.setenv would be better?)
+      readRenviron(file.path(work_loc, '.Renviron'))
+
+    } else {
+      warning('Function exiting without change to .Renviron for cache assignment...')
+      return(invisible(NULL)) # Dont replace, break out
+    }
+
+  } else {
+    warning('Function exiting without change to .Renviron for cache assignment...')
+    return(invisible(NULL))
+  }
+}
