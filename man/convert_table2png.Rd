@@ -7,7 +7,7 @@
 Inspired/adapted by a post from Michael Yan's blog: \url{http://thinkdatascience.com/}
 }
 \usage{
-convert_table2png(obj, name, rez = 600, interpreter = "xtable")
+convert_table2png(obj, name, rez = 600, interpreter = "xtable", ...)
 }
 \arguments{
 \item{obj}{A table object (huxtable, xtable, or tables).}
@@ -17,6 +17,8 @@ convert_table2png(obj, name, rez = 600, interpreter = "xtable")
 \item{rez}{Integer value for desired resolution (default is 600).}
 
 \item{interpreter}{Character vector to define which type of table object was used (huxtable, xtable, or tables).}
+
+\item{...}{Additional parameters passed to \code{\link[tools]{texi2dvi}}.}
 }
 \value{
 A png file saved to working directory.
@@ -27,11 +29,14 @@ A png file saved to working directory.
 \details{
 To create the png file, a LaTeX distribution, and texi2dvi (from base R) are required. It is recommended to use
 \code{\link[tinytex]{install_tinytex}}. Various LaTeX packages may be needed, specifically 'tabularx' and 'dvipng' should be
-installed using \code{\link[tinytex]{tlmgr_install('dvipng')}}
+installed using \code{tinytex::tlmgr_install('dvipng')}
+
+On some Linux machines, the texi2dvi operation may not work without additional configuration. As such, the parameter \code{texi2dvi} parameter
+should be set to \code{emulation}. This has been tested with \code{\link[xtable]{xtable}} but the other interpreters may have additional
+dependencies beyond this work-around.
 }
 \examples{
-\dontrun{
 convert_table2png(mtcars, 'carsTable', 600, interpreter = 'xtable')
-}
+convert_table2png(mtcars, 'carsTable', 600, interpreter = 'xtable', texi2dvi = 'emulation')
 
 }

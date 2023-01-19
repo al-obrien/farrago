@@ -31,6 +31,8 @@ This is an important step in ensuring a cohort process has monotonic (i.e. ever 
 The logic involves sorting by the \code{date_start} for each group and comparing if that value is larger or smaller than the preceding \code{date_end}. When \code{FALSE}, this indicates that
 an overlap occurs; when \code{TRUE}, the flag will increment. This function does not do the collapse procedure, as that can have nuanced implications with \code{NA} values, but it will provide
 the groupings required to do so. It is recommended to have the original data sorted by group and dates so that the returned flag aligns correctly. For performance, this function is written primarily in \code{data.table}.
+
+A method to find the exact overlapping ranges is to leverage \code{lubridate::interval()} and \code{lubridate::intersect()}
 }
 \examples{
 # Load libraries
@@ -64,4 +66,7 @@ test_data \%>\%
          min = if_else(is.infinite(min), NA_Date_, min),
          max = if_else(is.infinite(max), NA_Date_, max)) # To avoid -/+ Inf on only NA groupings; can skip if not required
 
+}
+\seealso{
+\code{\link{intersect}} \code{interval}
 }

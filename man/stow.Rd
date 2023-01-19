@@ -8,7 +8,7 @@ stow(
   object,
   path = NULL,
   new_name = NULL,
-  method = c("rds", "fst", "csv"),
+  method = c("rds", "fst", "qs", "csv"),
   compress = TRUE,
   cleanup = FALSE,
   envir = .GlobalEnv,
@@ -22,7 +22,7 @@ stow(
 
 \item{new_name}{Character string that is used to name the temporary file; default is \code{NULL} and uses the object name.}
 
-\item{method}{Character string for method of export, either 'rds', 'fst', 'csv'; used to determine the file extension.}
+\item{method}{Character string for method of export, either 'rds', 'fst', 'qs', 'csv'; used to determine the file extension.}
 
 \item{compress}{Logical value; default is \code{TRUE}, will compress the outputs.}
 

@@ -35,7 +35,8 @@ Convert a vector of input dates to flu season details. Output on week, month, ye
 \details{
 The primary purpose of this function is to reassign week 53 dates into week 1 and week 52. It will also provide flu season
 assignment based upon a flu week start date as reference. To improve speed, indexing methods are used to assign values instead of
-\code{\link{ifelse}} (increased speed by over 5-fold).
+\code{\link{ifelse}} (increased speed by over 5-fold). If one needs to convert year-weeks to a full date, it is recommended to use
+the ISOweek package (\code{ISOweek2date}). By default, the week split in this function uses ISO standards.
 }
 \note{
 Adapted from original with courtesy of M. Ware.
@@ -55,7 +56,7 @@ library(tidyr)
 # Create test data for known cases by season
 test_data <- data.frame(season = c(1, 1, 1, 2, 2),
                         date = lubridate::ymd(c('2020-06-14', '2020-08-09', '2020-08-16', '2021-08-29', '2021-09-12', '2021-01-01')),
-                        n = c(1,1,1,1, 2))
+                        n = c(1,1,1,1,2))
 
 # Determine the season with the specific date2fluseason function
 test_data$wk <- AHRtools::convert_date2fluseason(test_data$date, return_values = 'week')$week
