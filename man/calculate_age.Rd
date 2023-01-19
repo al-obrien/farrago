@@ -7,7 +7,13 @@
 \url{https://stackoverflow.com/questions/27096485/change-a-column-from-birth-date-to-age-in-r}
 }
 \usage{
-calculate_age(dob, age_day = Sys.Date(), units = "years", floor = TRUE)
+calculate_age(
+  dob,
+  age_day = Sys.Date(),
+  units = "years",
+  floor = TRUE,
+  force_dates = TRUE
+)
 }
 \arguments{
 \item{dob}{Vector containing date of birth for age calculation.}
@@ -17,6 +23,8 @@ calculate_age(dob, age_day = Sys.Date(), units = "years", floor = TRUE)
 \item{units}{unit to measure age (default set to \code{"years"}). Passed to \code{\link[lubridate]{duration}}.}
 
 \item{floor}{Boolean to determine to floor round the result (default set to \code{TRUE}).}
+
+\item{force_dates}{Force the dob and age.day parameter to be a date to avoid date-time vs date comparisons.}
 }
 \value{
 Age in \code{units}. Will be an integer if \code{floor = TRUE}.
@@ -26,7 +34,9 @@ Age in \code{units}. Will be an integer if \code{floor = TRUE}.
 }
 \details{
 Rounding is performed with \code{floor} so you are the same age up to the day before the next birthday
-(e.g 5 years old from 5th birthday through the day before your 6th birthday). Set \code{floor = FALSE} to
+(e.g 5 years old from 5th birthday through the day before your 6th birthday). Method uses the \code{lubridate} package to
+calculate the period between the two dates in "clock time", this ensures dates sharing the same month and day will calculate age in years
+as expected (i.e. a duration counted in seconds may not count years with the same resolution). Set \code{floor = FALSE} to
 return decimal ages, and change \code{units} for units other than years. Try combining with \code{\link{create_breaks}}
 to make age groupings.
 }
@@ -35,12 +45,12 @@ Adapted from SO post. Earlier methods used \code{as.integer((compare_date - dob)
 }
 \examples{
 \dontrun{
-tempData <- data.frame(date_of_birth = as.Date(c('1991-01-01', '1990-02-04')), death_date = as.Date(c('1992-01-1', '2020-01-01')))
+tempData <- data.frame(date_of_birth = as.Date(c('1991-01-01', '1990-02-04', '1991-03-14')), death_date = as.Date(c('1992-01-1', '2020-01-01', '1999-03-14')))
 calculate_age(tempData$date_of_birth, tempData$death_date)
 calculate_age(tempData$date_of_birth, tempData$death_date, units = 'minutes')
 calculate_age(tempData$date_of_birth, tempData$death_date, floor = FALSE)
 }
 }
 \author{
-Gregor Thomas \url{https://stackoverflow.com/users/903061/gregor-thomas>}
+Adapted from Gregor Thomas \url{https://stackoverflow.com/users/903061/gregor-thomas>}
 }
