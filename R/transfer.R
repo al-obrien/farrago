@@ -327,6 +327,7 @@ transfer_curl <- function(file = NULL, direction = NULL, connection = NULL, hand
 #' @param date_filter Reduce set of discovered file based upon a date threshold (default: \code{NULL}, no filtering occurs).
 #' @param date_pattern Regular expression to search file name for date, parsed with \code{date_format} parameter.
 #' @param date_format POSIX formatted dates or date/times (e.g. \code{"\%Y-\%m-\%d \%H-\%M"}).
+#' @param file_time Character vector, one of \code{mtime}, \code{ctime}, \code{atime}, passed to \code{file.info} (default: \code{ctime}).
 #' @param ... Additional parameters passed to \code{\link{list.files}}.
 #'
 #' @return Returns character vector, file name.
@@ -346,7 +347,7 @@ transfer_curl <- function(file = NULL, direction = NULL, connection = NULL, hand
 #'                  date_filter = lubridate::today()-10, # Only keep less than today and slice the top value
 #'                  full.names=FALSE)
 #' }
-find_file <- function(path, name_pattern, slice_n = NULL, date_filter = NULL, date_pattern = NULL, date_format = NULL, ...){
+find_file <- function(path, name_pattern, slice_n = NULL, date_filter = NULL, date_pattern = NULL, date_format = NULL, file_time = 'ctime', ...){
 
   # Grab all files by pattern and path
   extract_date <- data.frame(file_name = list.files(path,
@@ -362,9 +363,9 @@ find_file <- function(path, name_pattern, slice_n = NULL, date_filter = NULL, da
                                   time_create = as.POSIXct(regmatches(file_name, regexpr(date_pattern, file_name)),
                                                            format = date_format, tz = 'UTC'))
   } else if (all(sapply(file.path(path, extract_date$file_name), file.exists))) {
-    extract_date <-  dplyr::mutate(extract_date, time_create = lubridate::ymd_hms((file.info(file.path(path, file_name))$ctime))) # If more than one created that day, will take the latest
+    extract_date <-  dplyr::mutate(extract_date, time_create = lubridate::ymd_hms( (file.info(file.path(path, file_name))[[file_time]]) )) # If more than one created that day, will take the latest
   } else {
-    extract_date <- dplyr::mutate(extract_date, time_create = lubridate::ymd_hms((file.info(file_name)$ctime))) # If more than one created that day, will take the latest
+    extract_date <- dplyr::mutate(extract_date, time_create = lubridate::ymd_hms( (file.info(file_name)[[file_time]]) )) # If more than one created that day, will take the latest
   }
 
   extract_date %>%

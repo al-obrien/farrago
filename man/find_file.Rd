@@ -11,6 +11,7 @@ find_file(
   date_filter = NULL,
   date_pattern = NULL,
   date_format = NULL,
+  file_time = "ctime",
   ...
 )
 }
@@ -26,6 +27,8 @@ find_file(
 \item{date_pattern}{Regular expression to search file name for date, parsed with \code{date_format} parameter.}
 
 \item{date_format}{POSIX formatted dates or date/times (e.g. \code{"\%Y-\%m-\%d \%H-\%M"}).}
+
+\item{file_time}{Character vector, one of \code{mtime}, \code{ctime}, \code{atime}, passed to \code{file.info} (default: \code{ctime}).}
 
 \item{...}{Additional parameters passed to \code{\link{list.files}}.}
 }
