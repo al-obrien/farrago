@@ -12,16 +12,18 @@ read_chunked(
   chunk_function = NULL,
   chunk_size = 1000000L,
   rbind_method = rbind,
-  delim = ",",
-  parallel = 1
+  sep = ",",
+  header_check = TRUE,
+  parallel = 1,
+  ...
 )
 }
 \arguments{
-\item{file_location}{Location of target file to load (any file compatible with \code{\link[iotools]{dstrsplit}} and provided \code{delim} parameter).}
+\item{file_location}{Location of target file to load (any file compatible with \code{\link[iotools]{dstrsplit}} and provided \code{sep} parameter).}
 
 \item{filter_col}{Target column to perform filtering operation.}
 
-\item{filter_v}{Vector of values to perform filtering on (categorical by default via 'in' operator).}
+\item{filter_v}{Vector of values to perform filtering on (categorical by default via \code{in} operator).}
 
 \item{col_types}{A vector of values that specifies all of the column types in the file of interest, this is an \code{iotools} requirement.}
 
@@ -29,11 +31,15 @@ read_chunked(
 
 \item{chunk_size}{Size of each chunk to perform operations (default: 1e6L).}
 
-\item{rbind_method}{Function to perform the appending of chunks (default: \code{\link[base]{rbind}}).}
+\item{rbind_method}{Function to perform the appending of chunks (default: \code{\link[base]{rbind}}, but other binding options can be used).}
 
-\item{delim}{The delimiter type in the file of interest (default: ',').}
+\item{sep}{The delimiter type in the file of interest (default: ',').}
+
+\item{header_check}{Boolean value, to determine if headers should be searched for based upon column names and dropped from the function calls.}
 
 \item{parallel}{How many processes should be used in loading (default: 1).}
+
+\item{...}{Other paramters passed to \code{\link[iotools]{dstrsplit}}.}
 }
 \value{
 Dataframe (passed through the chunk-wise function)
@@ -73,7 +79,7 @@ custom_chunk_f <- function(chunk) {
                 .SDcols = c('recordID1', 'recordID2', 'recordID3', 'recordID4', 'recordID5')]]
                 }
  chunk_loaded_file <- read_chunked(file_of_interest, filter_v = ids_of_interest, col_types = file_coltypes,
-                                   chunk_function = custom_chunk_f, rbind_method = data.table::rbindlist, parallel = 2)
+                                   chunk_function = custom_chunk_f, rbind_method = rbind, parallel = 2)
 }
 }
 \seealso{
